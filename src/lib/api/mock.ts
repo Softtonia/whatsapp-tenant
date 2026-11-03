@@ -1,6 +1,6 @@
 import type { ApiResponse } from "@/types/api";
 import type { User } from "@/types/user";
-import type { Tenant, WhatsAppHealthData } from "@/types/tenant";
+import type { Tenant, WhatsAppHealthData, Industry } from "@/types/tenant";
 import type {
   Conversation,
   Message,
@@ -84,6 +84,40 @@ const mockUser: User = {
   tenant_id: 1,
   created_at: "2026-01-15T10:00:00Z",
 };
+
+export const mockIndustries: Industry[] = [
+  { id: 1, name: "Agriculture & Farming", slug: "agriculture-farming", code: "AGRICULTURE", description: "Crop production, farming, livestock, agricultural equipment, and agribusiness.", icon: "sprout", sort_order: 1, is_active: true },
+  { id: 2, name: "Automotive", slug: "automotive", code: "AUTOMOTIVE", description: "Vehicle dealerships, parts, repair, servicing, and auto manufacturing.", icon: "car", sort_order: 2, is_active: true },
+  { id: 3, name: "Banking & Financial Services", slug: "banking-financial-services", code: "BANKING_FINANCE", description: "Commercial banking, investment, microfinance, wealth management, and fintech.", icon: "bank", sort_order: 3, is_active: true },
+  { id: 4, name: "Beauty & Personal Care", slug: "beauty-personal-care", code: "BEAUTY_PERSONAL_CARE", description: "Salons, spas, cosmetics, skincare, haircare, and personal grooming.", icon: "sparkles", sort_order: 4, is_active: true },
+  { id: 5, name: "Construction", slug: "construction", code: "CONSTRUCTION", description: "Civil engineering, commercial and residential construction, and building materials.", icon: "hard-hat", sort_order: 5, is_active: true },
+  { id: 6, name: "Consulting", slug: "consulting", code: "CONSULTING", description: "Management, strategy, financial, technology, and business advisory services.", icon: "briefcase", sort_order: 6, is_active: true },
+  { id: 7, name: "Education", slug: "education", code: "EDUCATION", description: "Schools, universities, e-learning platforms, tutoring, and vocational training.", icon: "graduation-cap", sort_order: 7, is_active: true },
+  { id: 8, name: "Electronics", slug: "electronics", code: "ELECTRONICS", description: "Consumer electronics, semiconductors, hardware devices, and appliance manufacturing.", icon: "cpu", sort_order: 8, is_active: true },
+  { id: 9, name: "Energy & Utilities", slug: "energy-utilities", code: "ENERGY_UTILITIES", description: "Electricity, oil & gas, renewable energy, solar, water, and waste utilities.", icon: "zap", sort_order: 9, is_active: true },
+  { id: 10, name: "Entertainment & Media", slug: "entertainment-media", code: "ENTERTAINMENT_MEDIA", description: "Film, television, music, publishing, gaming, and digital broadcasting.", icon: "film", sort_order: 10, is_active: true },
+  { id: 11, name: "Events & Wedding Services", slug: "events-wedding-services", code: "EVENTS_WEDDINGS", description: "Event planning, wedding coordination, catering, venue management, and production.", icon: "calendar", sort_order: 11, is_active: true },
+  { id: 12, name: "Fashion & Apparel", slug: "fashion-apparel", code: "FASHION_APPAREL", description: "Clothing, footwear, accessories, luxury fashion, and textile design.", icon: "shirt", sort_order: 12, is_active: true },
+  { id: 13, name: "Food & Beverage", slug: "food-beverage", code: "FOOD_BEVERAGE", description: "Restaurants, cafes, food processing, breweries, cloud kitchens, and specialty foods.", icon: "utensils", sort_order: 13, is_active: true },
+  { id: 14, name: "Healthcare", slug: "healthcare", code: "HEALTHCARE", description: "Hospitals, medical clinics, dental care, diagnostic labs, and medical devices.", icon: "stethoscope", sort_order: 14, is_active: true },
+  { id: 15, name: "Hospitality", slug: "hospitality", code: "HOSPITALITY", description: "Hotels, resorts, homestays, vacation rentals, and guest services.", icon: "hotel", sort_order: 15, is_active: true },
+  { id: 16, name: "Information Technology", slug: "information-technology", code: "IT", description: "Software development, SaaS, cloud infrastructure, cybersecurity, and IT services.", icon: "terminal", sort_order: 16, is_active: true },
+  { id: 17, name: "Insurance", slug: "insurance", code: "INSURANCE", description: "Life, health, property, casualty, auto, and commercial insurance brokerage.", icon: "shield", sort_order: 17, is_active: true },
+  { id: 18, name: "Logistics & Transportation", slug: "logistics-transportation", code: "LOGISTICS", description: "Freight forwarding, shipping, supply chain management, courier, and fleet operations.", icon: "truck", sort_order: 18, is_active: true },
+  { id: 19, name: "Manufacturing", slug: "manufacturing", code: "MANUFACTURING", description: "Industrial manufacturing, heavy machinery, consumer goods, and assembly operations.", icon: "factory", sort_order: 19, is_active: true },
+  { id: 20, name: "Marketing & Advertising", slug: "marketing-advertising", code: "MARKETING_ADVERTISING", description: "Digital marketing, SEO, creative agencies, branding, PR, and media buying.", icon: "megaphone", sort_order: 20, is_active: true },
+  { id: 21, name: "Real Estate", slug: "real-estate", code: "REAL_ESTATE", description: "Property brokerage, real estate development, property management, and leasing.", icon: "building", sort_order: 21, is_active: true },
+  { id: 22, name: "Retail & E-commerce", slug: "retail-ecommerce", code: "RETAIL_ECOMMERCE", description: "Online stores, retail chains, direct-to-consumer brands, and marketplace sellers.", icon: "shopping-cart", sort_order: 22, is_active: true },
+  { id: 23, name: "Telecommunications", slug: "telecommunications", code: "TELECOMMUNICATIONS", description: "Broadband, wireless carriers, telecom hardware, satellite, and network services.", icon: "radio", sort_order: 23, is_active: true },
+  { id: 24, name: "Travel & Tourism", slug: "travel-tourism", code: "TRAVEL_TOURISM", description: "Travel agencies, tour operators, booking portals, airlines, and excursion services.", icon: "plane", sort_order: 24, is_active: true },
+  { id: 25, name: "Wholesale & Distribution", slug: "wholesale-distribution", code: "WHOLESALE", description: "B2B distribution, wholesale trade, warehousing, and merchant wholesalers.", icon: "boxes", sort_order: 25, is_active: true },
+  { id: 26, name: "Legal Services", slug: "legal-services", code: "LEGAL_SERVICES", description: "Law firms, attorneys, legal compliance, intellectual property, and arbitration.", icon: "scale", sort_order: 26, is_active: true },
+  { id: 27, name: "Professional Services", slug: "professional-services", code: "PROFESSIONAL_SERVICES", description: "Accounting, auditing, tax filing, architectural design, and translation services.", icon: "user-check", sort_order: 27, is_active: true },
+  { id: 28, name: "Home Services", slug: "home-services", code: "HOME_SERVICES", description: "Plumbing, electrical, HVAC, interior design, renovation, and cleaning services.", icon: "home", sort_order: 28, is_active: true },
+  { id: 29, name: "Fitness & Sports", slug: "fitness-sports", code: "FITNESS_SPORTS", description: "Gyms, sports clubs, personal training, athletic apparel, and wellness centers.", icon: "activity", sort_order: 29, is_active: true },
+  { id: 30, name: "Non-Profit & NGO", slug: "non-profit-ngo", code: "NON_PROFIT_NGO", description: "Charitable trusts, foundations, advocacy groups, community development, and NGOs.", icon: "heart", sort_order: 30, is_active: true },
+  { id: 31, name: "Government & Public Sector", slug: "government-public-sector", code: "GOVERNMENT_PUBLIC", description: "Public agencies, civic services, utilities, and municipal administrations.", icon: "landmark", sort_order: 31, is_active: true },
+];
 
 const mockTenants: Tenant[] = [
   {
@@ -1706,8 +1740,16 @@ const mockUserSessions: UserSession[] = [
   },
 ];
 
-export function getMockResponse<T>(path: string, method = "GET"): ApiResponse<T> | null {
+export function getMockResponse<T>(path: string, method = "GET", body?: any): ApiResponse<T> | null {
   const normalized = path.split("?")[0];
+
+  if (normalized === "/api/tenant/industries" && method === "GET") {
+    return {
+      success: true,
+      message: "Industries retrieved successfully",
+      data: mockIndustries as unknown as T,
+    };
+  }
 
   if (normalized === "/api/auth/me" && method === "GET") {
     return {
@@ -1720,6 +1762,13 @@ export function getMockResponse<T>(path: string, method = "GET"): ApiResponse<T>
     };
   }
 
+  if (normalized === "/api/auth/logout" && method === "POST") {
+    return {
+      success: true,
+      message: "Successfully logged out",
+      data: null as unknown as T,
+    };
+  }
   if (normalized === "/api/auth/login" && method === "POST") {
     return {
       success: true,
@@ -1737,6 +1786,31 @@ export function getMockResponse<T>(path: string, method = "GET"): ApiResponse<T>
       success: true,
       message: "If your email is registered, you will receive a password reset link shortly.",
       data: { status: "sent" } as unknown as T,
+    };
+  }
+
+  if (normalized === "/api/invitations/accept" && method === "POST") {
+    const payload = (body || {}) as Record<string, any>;
+    const firstName = payload.first_name || "John";
+    const lastName = payload.last_name || "Doe";
+    const acceptedUser = {
+      ...mockUser,
+      id: 999,
+      name: `${firstName} ${lastName}`,
+      phone: payload.phone_number || "+1234567890",
+      role: "agent",
+      is_active: true,
+    };
+    return {
+      success: true,
+      message: "Invitation accepted successfully. Your account is now active.",
+      data: {
+        token: "mock-jwt-token-invitation-accepted",
+        access_token: "mock-jwt-token-invitation-accepted",
+        user: acceptedUser,
+        workspaces: mockTenants,
+        status: "accepted",
+      } as unknown as T,
     };
   }
 

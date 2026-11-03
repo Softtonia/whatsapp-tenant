@@ -1,3 +1,4 @@
+export { acceptInvitation } from "@/features/auth/api";
 import { apiClient } from "@/src/lib/api/client";
 import { API_ENDPOINTS } from "@/src/lib/api/endpoints";
 import type {
@@ -107,4 +108,3 @@ export async function fetchTenantPermissions(): Promise<TenantPermission[]> {
   const res = await apiClient.get<TenantPermission[]>(API_ENDPOINTS.TEAM.PERMISSIONS);
   return Array.isArray(res.data) ? res.data : [];
 }
-

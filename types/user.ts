@@ -29,6 +29,6 @@ export interface LoginResponseData {
   token_type?: string;
   mfa_required?: boolean;
   challenge_token?: string;
-  workspaces?: Tenant[];
+  workspaces?: Tenant[]; success?: boolean; message?: string; status?: string; workspace_required?: boolean; current_workspace?: any;
 }
 

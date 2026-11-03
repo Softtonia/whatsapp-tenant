@@ -5,13 +5,24 @@ import {
   logoutUser,
   forgotPassword,
   resetPassword,
+  acceptInvitation,
   verifyMfa,
+  enrollMfa,
+  confirmMfa,
+  disableMfa,
+  sendChangePasswordOtp,
+  verifyChangePasswordOtp,
+  changePasswordWithOtp,
   switchWorkspace,
   fetchWorkspaces,
 } from "./api";
 import { useAuthStore } from "@/lib/auth/store";
 import { useTenantStore } from "@/lib/tenant/store";
-import type { LoginFormData, ResetPasswordFormData } from "./schemas";
+import type {
+  LoginFormData,
+  ResetPasswordFormData,
+  AcceptInvitationFormData,
+} from "./schemas";
 import type { User, LoginResponseData } from "@/types/user";
 import type { Tenant } from "@/types/tenant";
 
@@ -59,40 +70,40 @@ export function useLoginMutation() {
 
   return useMutation({
     mutationFn: (credentials: LoginFormData) => loginUser(credentials),
-    onSuccess: (data: LoginResponseData, variables) => {
-      // Check if MFA is required
-      if (data.mfa_required && data.challenge_token) {
+    onSuccess: (data: any) => {
+      if (data?.mfa_required && (data.challenge_token || data.challengeToken)) {
         setMfaChallenge({
-          challengeToken: data.challenge_token,
-          email: variables.email,
+          challengeToken: data.challenge_token || data.challengeToken,
+          challenge_token: data.challenge_token || data.challengeToken,
+          email: "",
         });
         return;
       }
 
-      const token = data.token || data.access_token;
-      if (token && data.user) {
-        setCredentials(token, data.user);
-      } else if (token) {
-        const placeholderUser: User = {
-          id: "me",
-          name: "Workspace Member",
-          email: variables.email,
-          role: "admin",
-        };
-        setCredentials(token, placeholderUser);
-      }
+      const authToken = data?.token || data?.access_token;
+      const user = data?.user;
 
-      // If workspaces are returned, update tenant store
-      if (data.workspaces && data.workspaces.length > 0) {
-        setAvailableTenants(data.workspaces);
-        const active = data.workspaces.find(
-          (w) => String(w.id) === String(variables.tenantId)
-        ) || data.workspaces[0];
-        setActiveTenant(active);
-      }
+      if (authToken && user) {
+        setCredentials(authToken, user);
 
-      // Invalidate current user query to refresh profile immediately
-      queryClient.invalidateQueries({ queryKey: authKeys.me() });
+        const workspaces = data.workspaces || [];
+        setAvailableTenants(workspaces);
+
+        const activeWp =
+          data.current_workspace ||
+          (workspaces.length > 0
+            ? workspaces.find((w: any) => String(w.id) === String(user.tenant_id)) || workspaces[0]
+            : {
+                id: user.tenant_id || 1,
+                name: user.name ? `${user.name}'s Workspace` : "My Workspace",
+                status: "active",
+              });
+
+        setActiveTenant(activeWp);
+
+        queryClient.invalidateQueries({ queryKey: authKeys.me() });
+        queryClient.invalidateQueries({ queryKey: authKeys.workspaces() });
+      }
     },
   });
 }
@@ -100,37 +111,94 @@ export function useLoginMutation() {
 export function useMfaVerifyMutation() {
   const queryClient = useQueryClient();
   const setCredentials = useAuthStore((s) => s.setCredentials);
-  const email = useAuthStore((s) => s.mfaChallenge?.email) || "";
+  const setActiveTenant = useTenantStore((s) => s.setActiveTenant);
+  const setAvailableTenants = useTenantStore((s) => s.setAvailableTenants);
 
   return useMutation({
     mutationFn: (payload: { challenge_token: string; code: string }) => verifyMfa(payload),
-    onSuccess: (data: LoginResponseData) => {
-      const token = data.token || data.access_token;
-      if (token && data.user) {
-        setCredentials(token, data.user);
-      } else if (token) {
-        const placeholderUser: User = {
-          id: "me",
-          name: "Workspace Member",
-          email,
-          role: "admin",
-        };
-        setCredentials(token, placeholderUser);
+    onSuccess: (data: any) => {
+      const authToken = data?.token || data?.access_token;
+      const user = data?.user;
+
+      if (authToken && user) {
+        setCredentials(authToken, user);
+
+        const workspaces = data.workspaces || [];
+        setAvailableTenants(workspaces);
+
+        const activeWp =
+          data.current_workspace ||
+          (workspaces.length > 0
+            ? workspaces.find((w: any) => String(w.id) === String(user.tenant_id)) || workspaces[0]
+            : {
+                id: user.tenant_id || 1,
+                name: user.name ? `${user.name}'s Workspace` : "My Workspace",
+                status: "active",
+              });
+
+        setActiveTenant(activeWp);
+
+        queryClient.invalidateQueries({ queryKey: authKeys.me() });
+        queryClient.invalidateQueries({ queryKey: authKeys.workspaces() });
       }
+    },
+  });
+}
+
+export function useEnrollMfaMutation() {
+  return useMutation({
+    mutationFn: (password: string) => enrollMfa(password),
+  });
+}
+
+export function useConfirmMfaMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (code: string) => confirmMfa(code),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: authKeys.me() });
     },
+  });
+}
+
+export function useDisableMfaMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { password: string; code: string }) => disableMfa(payload.password, payload.code),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: authKeys.me() });
+    },
+  });
+}
+
+export function useSendChangePasswordOtpMutation() {
+  return useMutation({
+    mutationFn: sendChangePasswordOtp,
+  });
+}
+
+export function useVerifyChangePasswordOtpMutation() {
+  return useMutation({
+    mutationFn: (otp: string) => verifyChangePasswordOtp(otp),
+  });
+}
+
+export function useChangePasswordWithOtpMutation() {
+  return useMutation({
+    mutationFn: changePasswordWithOtp,
   });
 }
 
 export function useLogoutMutation() {
   const queryClient = useQueryClient();
   const logout = useAuthStore((s) => s.logout);
+  const clearTenant = useTenantStore((s) => s.clearTenant);
 
   return useMutation({
     mutationFn: logoutUser,
     onSettled: () => {
       logout();
-      // Clear entire query cache upon logout to prevent any residual tenant data leakage
+      clearTenant();
       queryClient.clear();
     },
   });
@@ -145,6 +213,28 @@ export function useForgotPasswordMutation() {
 export function useResetPasswordMutation() {
   return useMutation({
     mutationFn: (payload: ResetPasswordFormData) => resetPassword(payload),
+  });
+}
+
+export function useAcceptInvitationMutation() {
+  const queryClient = useQueryClient();
+  const setCredentials = useAuthStore((s) => s.setCredentials);
+  const setActiveTenant = useTenantStore((s) => s.setActiveTenant);
+
+  return useMutation({
+    mutationFn: (payload: AcceptInvitationFormData) => acceptInvitation(payload),
+    onSuccess: (data: any) => {
+      const authToken = data?.token || data?.access_token;
+      const user = data?.user;
+
+      if (authToken && user) {
+        setCredentials(authToken, user);
+        if (data.workspaces && data.workspaces.length > 0) {
+          setActiveTenant(data.workspaces[0]);
+        }
+        queryClient.invalidateQueries({ queryKey: authKeys.me() });
+      }
+    },
   });
 }
 
@@ -164,12 +254,10 @@ export function useSwitchWorkspaceMutation() {
         setTenantLoading(false);
       }
     },
-    onSuccess: ({ targetTenantId, result }) => {
-      // 1. Purge all prior tenant query caches immediately to prevent cross-tenant data leaks
+    onSuccess: ({ targetTenantId, result }: any) => {
       queryClient.clear();
 
-      // 2. Derive active workspace from authorized server state
-      let updatedTenant: Tenant | undefined = result.tenant;
+      let updatedTenant: Tenant | undefined = result?.tenant;
       if (!updatedTenant) {
         updatedTenant = availableTenants.find(
           (t) => String(t.id) === String(targetTenantId)
@@ -180,7 +268,6 @@ export function useSwitchWorkspaceMutation() {
         setActiveTenant(updatedTenant);
       }
 
-      // 3. Refetch fresh current user and workspace context
       queryClient.invalidateQueries({ queryKey: authKeys.me() });
       queryClient.invalidateQueries({ queryKey: authKeys.workspaces() });
     },

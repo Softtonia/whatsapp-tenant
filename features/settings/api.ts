@@ -95,32 +95,31 @@ export async function revokeUserSession(id: string | number): Promise<void> {
   await apiClient.delete(API_ENDPOINTS.USERS.REVOKE_SESSION(id));
 }
 
-export async function enrollMfa(): Promise<{
+export async function enrollMfa(password?: string): Promise<{
   secret: string;
-  qr_code_url: string;
-  recovery_codes: string[];
+  qr_code_svg?: string;
+  qr_code_url?: string;
+  provisioning_uri?: string;
+  recovery_codes?: string[];
 }> {
-  const res = await apiClient.post<{
-    secret: string;
-    qr_code_url: string;
-    recovery_codes: string[];
-  }>(API_ENDPOINTS.AUTH.MFA_ENROLL);
-  return res.data;
+  const res: any = await apiClient.post<any>(API_ENDPOINTS.AUTH.MFA_ENROLL, {
+    password: password || "",
+  });
+  return res?.data || res;
 }
 
-export async function confirmMfa(code: string): Promise<{ mfa_enabled: boolean }> {
-  const res = await apiClient.post<{ mfa_enabled: boolean }>(
+export async function confirmMfa(code: string): Promise<{ success?: boolean; mfa_enabled?: boolean }> {
+  const res: any = await apiClient.post<any>(
     API_ENDPOINTS.AUTH.MFA_CONFIRM,
     { code }
   );
-  return res.data;
+  return res?.data || res;
 }
 
-export async function disableMfa(password: string): Promise<{ mfa_enabled: boolean }> {
-  const res = await apiClient.post<{ mfa_enabled: boolean }>(
+export async function disableMfa(password: string, code?: string): Promise<{ success?: boolean; mfa_enabled?: boolean }> {
+  const res: any = await apiClient.post<any>(
     API_ENDPOINTS.AUTH.MFA_DISABLE,
-    { password }
+    { password, code: code || "" }
   );
-  return res.data;
+  return res?.data || res;
 }
-

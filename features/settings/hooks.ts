@@ -156,7 +156,7 @@ export function useRevokeUserSessionMutation() {
 
 export function useEnrollMfaMutation() {
   return useMutation({
-    mutationFn: () => enrollMfa(),
+    mutationFn: (password: string = "") => enrollMfa(password),
   });
 }
 
@@ -168,7 +168,9 @@ export function useConfirmMfaMutation() {
 
 export function useDisableMfaMutation() {
   return useMutation({
-    mutationFn: (password: string) => disableMfa(password),
+    mutationFn: (payload: { password: string; code?: string } | string = "") =>
+      typeof payload === "string"
+        ? disableMfa(payload)
+        : disableMfa(payload.password, payload.code),
   });
 }
-

@@ -29,7 +29,7 @@ export function LoginForm() {
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: "vijay.kumar@softtonia.com",
+      email: "",
       password: "",
       tenantId: "1",
     },
@@ -43,8 +43,22 @@ export function LoginForm() {
     setServerError(null);
     try {
       const res = await loginMutation.mutateAsync(data);
-      if (!res.mfa_required) {
-        router.push("/dashboard");
+      if (res?.mfa_required) {
+        return;
+      }
+
+      // Check if user has no workspaces or workspace is required
+      const needsOnboarding =
+        res?.workspace_required ||
+        !res?.workspaces ||
+        res.workspaces.length === 0;
+
+      const targetUrl = needsOnboarding ? "/organization-setup" : "/dashboard";
+
+      if (typeof window !== "undefined") {
+        window.location.href = targetUrl;
+      } else {
+        router.push(targetUrl);
       }
     } catch (error) {
       setServerError(getErrorMessage(error));
@@ -149,7 +163,7 @@ export function LoginForm() {
               "Authenticating..."
             ) : (
               <span className="flex items-center gap-2">
-                Continue to Dashboard
+                Continue to Workspace
                 <ArrowRight className="size-4" />
               </span>
             )}

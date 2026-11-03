@@ -5,6 +5,7 @@ import {
   resetPasswordSchema,
   mfaVerifySchema,
   reauthSchema,
+  acceptInvitationSchema,
 } from "@/features/auth/schemas";
 import {
   businessProfileSchema,
@@ -76,6 +77,28 @@ describe("Authentication Schemas & Validation", () => {
       password_confirmation: "weakpassword123!",
     });
     expect(missingUppercase.success).toBe(false);
+  });
+
+  it("validates invitation acceptance payload correctly", () => {
+    const valid = acceptInvitationSchema.safeParse({
+      token: "inv_test_token_123",
+      first_name: "John",
+      last_name: "Doe",
+      password: "SecurePass123!",
+      password_confirmation: "SecurePass123!",
+      phone_number: "+1234567890",
+    });
+    expect(valid.success).toBe(true);
+
+    const mismatch = acceptInvitationSchema.safeParse({
+      token: "inv_test_token_123",
+      first_name: "John",
+      last_name: "Doe",
+      password: "SecurePass123!",
+      password_confirmation: "Mismatch123!",
+      phone_number: "+1234567890",
+    });
+    expect(mismatch.success).toBe(false);
   });
 
   it("validates 6-digit MFA OTP numeric code", () => {

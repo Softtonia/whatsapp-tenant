@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -9,21 +9,40 @@ import { useMfaVerifyMutation } from "../hooks";
 import { useAuthStore } from "@/lib/auth/store";
 import { getErrorMessage } from "@/src/lib/api/errors";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShieldCheck, AlertCircle, ArrowRight, ArrowLeft } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  ShieldCheck,
+  ArrowRight,
+  ArrowLeft,
+  Loader2,
+  AlertCircle,
+  KeyRound,
+} from "lucide-react";
 
 export function MfaVerifyForm() {
   const router = useRouter();
-  const [serverError, setServerError] = useState<string | null>(null);
   const mfaChallenge = useAuthStore((s) => s.mfaChallenge);
   const setMfaChallenge = useAuthStore((s) => s.setMfaChallenge);
-  const mfaMutation = useMfaVerifyMutation();
+
+  const [serverError, setServerError] = useState<string | null>(null);
+
+  // Verification 6-digit segmented inputs
+  const [otpDigits, setOtpDigits] = useState<string[]>(["", "", "", "", "", ""]);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const verifyMutation = useMfaVerifyMutation();
 
   const {
-    register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    setValue,
+    watch,
   } = useForm<MfaVerifyFormData>({
     resolver: zodResolver(mfaVerifySchema),
     defaultValues: {
@@ -32,82 +51,171 @@ export function MfaVerifyForm() {
     },
   });
 
-  const onSubmit = async (data: MfaVerifyFormData) => {
-    setServerError(null);
-    try {
-      await mfaMutation.mutateAsync({
-        challenge_token: data.challenge_token,
-        code: data.code,
-      });
-      router.push("/dashboard");
-    } catch (error) {
-      setServerError(getErrorMessage(error));
+  const challengeToken = watch("challenge_token");
+
+  // Keep challenge token in sync if mfaChallenge changes
+  useEffect(() => {
+    if (mfaChallenge?.challengeToken) {
+      setValue("challenge_token", mfaChallenge.challengeToken);
+    }
+  }, [mfaChallenge, setValue]);
+
+  // Handle segmented OTP digits
+  const handleOtpChange = (index: number, value: string) => {
+    const cleanVal = value.replace(/\D/g, "");
+    if (!cleanVal) {
+      const nextDigits = [...otpDigits];
+      nextDigits[index] = "";
+      setOtpDigits(nextDigits);
+      setValue("code", nextDigits.join(""));
+      return;
+    }
+
+    const char = cleanVal.slice(-1);
+    const nextDigits = [...otpDigits];
+    nextDigits[index] = char;
+    setOtpDigits(nextDigits);
+    const fullCode = nextDigits.join("");
+    setValue("code", fullCode);
+
+    // Auto-advance to next box
+    if (index < 5 && char) {
+      inputRefs.current[index + 1]?.focus();
     }
   };
 
-  const handleCancel = () => {
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace" && !otpDigits[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (!pasted) return;
+
+    const nextDigits = [...otpDigits];
+    for (let i = 0; i < 6; i++) {
+      nextDigits[i] = pasted[i] || "";
+    }
+    setOtpDigits(nextDigits);
+    setValue("code", nextDigits.join(""));
+
+    const targetIdx = Math.min(pasted.length, 5);
+    inputRefs.current[targetIdx]?.focus();
+  };
+
+  const onVerifySubmit = async (data: MfaVerifyFormData) => {
+    setServerError(null);
+    try {
+      const res = await verifyMutation.mutateAsync({
+        challenge_token: data.challenge_token,
+        code: data.code,
+      });
+      const needsOnboarding =
+        res?.workspace_required ||
+        !res?.workspaces ||
+        res.workspaces.length === 0;
+      const targetUrl = needsOnboarding ? "/organization-setup" : "/dashboard";
+      if (typeof window !== "undefined") {
+        window.location.href = targetUrl;
+      } else {
+        router.push(targetUrl);
+      }
+    } catch (err) {
+      setServerError(getErrorMessage(err));
+    }
+  };
+
+  const handleBackToLogin = () => {
     setMfaChallenge(null);
   };
 
   return (
-    <Card className="w-full max-w-md shadow-lg border-border/80">
-      <CardHeader className="space-y-1 text-center">
-        <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+    <Card className="w-full max-w-md shadow-xl border-border/80">
+      <CardHeader className="space-y-2 text-center pb-3">
+        <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-4 ring-primary/5">
           <ShieldCheck className="size-6" />
         </div>
-        <CardTitle className="text-xl font-bold tracking-tight">Two-Factor Authentication</CardTitle>
-        <CardDescription className="text-xs">
-          Enter the 6-digit authentication code sent to{" "}
-          <span className="font-semibold text-foreground">
-            {mfaChallenge?.email || "your registered account"}
-          </span>
-        </CardDescription>
+        <div>
+          <CardTitle className="text-xl font-bold tracking-tight text-foreground">
+            Two-Factor Authentication
+          </CardTitle>
+          <CardDescription className="text-xs text-muted-foreground mt-0.5">
+            Enter the 6-digit verification code from your authenticator application
+          </CardDescription>
+        </div>
       </CardHeader>
 
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form onSubmit={handleSubmit(onVerifySubmit)}>
         <CardContent className="space-y-4">
           {serverError && (
-            <div className="flex items-center gap-2 p-3 text-xs rounded-lg bg-destructive/10 text-destructive border border-destructive/20">
-              <AlertCircle className="size-4 shrink-0" />
-              <span>{serverError}</span>
+            <div className="flex items-start gap-2.5 p-3 text-xs rounded-xl bg-destructive/10 text-destructive border border-destructive/20 animate-in fade-in-0">
+              <AlertCircle className="size-4 shrink-0 mt-0.5" />
+              <span className="leading-relaxed">{serverError}</span>
             </div>
           )}
 
-          <input type="hidden" {...register("challenge_token")} />
-
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <label className="text-xs font-semibold text-foreground flex items-center justify-between">
               <span>Security Code</span>
-              <span className="text-[11px] text-muted-foreground">6-digit OTP</span>
+              <span className="text-[11px] text-muted-foreground font-mono">6-Digit OTP</span>
             </label>
-            <Input
-              type="text"
-              inputMode="numeric"
-              maxLength={6}
-              placeholder="000000"
-              autoFocus
-              className={`text-center font-mono text-lg tracking-widest ${
-                errors.code ? "border-destructive" : ""
-              }`}
-              {...register("code")}
-              disabled={isSubmitting || mfaMutation.isPending}
-            />
-            {errors.code && (
-              <p className="text-xs text-destructive">{errors.code.message}</p>
-            )}
+
+            {/* 6 Individual OTP Boxes */}
+            <div className="flex items-center justify-between gap-2">
+              {otpDigits.map((digit, idx) => (
+                <input
+                  key={idx}
+                  ref={(el) => {
+                    inputRefs.current[idx] = el;
+                  }}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => handleOtpChange(idx, e.target.value)}
+                  onKeyDown={(e) => handleOtpKeyDown(idx, e)}
+                  onPaste={idx === 0 ? handleOtpPaste : undefined}
+                  autoFocus={idx === 0}
+                  className="size-11 sm:size-12 text-center font-mono text-xl font-bold rounded-xl border border-border/80 bg-background text-foreground shadow-xs focus:outline-none focus:border-ring focus:ring-2 focus:ring-ring/40 transition-all"
+                />
+              ))}
+            </div>
           </div>
+
+          {/* Fallback Challenge Token (if not present from session) */}
+          {!mfaChallenge?.challengeToken && (
+            <div className="space-y-1.5 pt-1">
+              <label className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
+                <KeyRound className="size-3" />
+                MFA Challenge Token
+              </label>
+              <input
+                type="text"
+                placeholder="Paste challenge token here..."
+                value={challengeToken}
+                onChange={(e) => setValue("challenge_token", e.target.value)}
+                className="w-full font-mono text-xs h-9 rounded-lg border border-border/80 bg-muted/40 px-3 text-foreground focus:outline-none focus:border-ring"
+              />
+            </div>
+          )}
         </CardContent>
 
-        <CardFooter className="flex flex-col gap-2.5 pt-2">
+        <CardFooter className="flex flex-col gap-2.5 pt-2 pb-5">
           <Button
             type="submit"
-            className="w-full font-semibold"
-            disabled={isSubmitting || mfaMutation.isPending}
+            className="w-full font-semibold h-10"
+            disabled={verifyMutation.isPending || otpDigits.join("").length !== 6}
           >
-            {mfaMutation.isPending ? (
-              "Verifying..."
+            {verifyMutation.isPending ? (
+              <>
+                <Loader2 className="size-4 animate-spin mr-2" />
+                Verifying Security Code...
+              </>
             ) : (
-              <span className="flex items-center gap-2">
+              <span className="flex items-center justify-center gap-2">
                 Verify and Continue
                 <ArrowRight className="size-4" />
               </span>
@@ -118,15 +226,18 @@ export function MfaVerifyForm() {
             type="button"
             variant="ghost"
             size="sm"
-            onClick={handleCancel}
+            onClick={handleBackToLogin}
             className="w-full text-xs text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="mr-1.5 size-3.5" />
-            Back to sign in
+            Back to Account Sign In
           </Button>
+
+          <p className="text-center text-[10px] text-muted-foreground mt-1">
+            Protected with RFC 6238 TOTP standard &amp; multi-tenant isolation.
+          </p>
         </CardFooter>
       </form>
     </Card>
   );
 }
-

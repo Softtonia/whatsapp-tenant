@@ -1,7 +1,8 @@
 import type { User } from "@/types/user";
 
 export interface MfaChallenge {
-  challengeToken: string;
+  challengeToken?: string;
+  challenge_token?: string;
   email: string;
 }
 

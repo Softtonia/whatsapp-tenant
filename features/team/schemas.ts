@@ -1,4 +1,5 @@
 import { z } from "zod";
+export { acceptInvitationSchema, type AcceptInvitationFormData } from "@/features/auth/schemas";
 
 export const inviteMemberSchema = z.object({
   email: z.string().email("A valid business email address is required"),
@@ -21,4 +22,3 @@ export const updateAvailabilitySchema = z.object({
 });
 
 export type UpdateAvailabilityData = z.infer<typeof updateAvailabilitySchema>;
-
