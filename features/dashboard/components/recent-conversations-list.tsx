@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatRelativeTime } from "@/lib/formatters";
 import { MessageSquare, ArrowRight, UserCheck, Clock, RefreshCw } from "lucide-react";
 import Link from "next/link";
-import type { ConversationStatus } from "@/types/whatsapp";
+import type { ConversationStatus, Conversation } from "@/types/whatsapp";
 
 function getStatusBadge(status: ConversationStatus) {
   switch (status) {
@@ -84,7 +84,13 @@ export function RecentConversationsList() {
     );
   }
 
-  const list = conversations || [];
+  const list: Conversation[] = Array.isArray(conversations)
+    ? (conversations as Conversation[])
+    : Array.isArray((conversations as any)?.data)
+    ? ((conversations as any).data as Conversation[])
+    : Array.isArray((conversations as any)?.conversations)
+    ? ((conversations as any).conversations as Conversation[])
+    : [];
 
   return (
     <Card className="border-border/80 shadow-xs">
@@ -116,11 +122,11 @@ export function RecentConversationsList() {
             </p>
           </div>
         ) : (
-          list.map((conv) => {
+          list.map((conv: Conversation) => {
             const initials = conv.contact_name
               ? conv.contact_name
                   .split(" ")
-                  .map((w) => w[0])
+                  .map((w: string) => w[0])
                   .slice(0, 2)
                   .join("")
                   .toUpperCase()
@@ -191,4 +197,3 @@ export function RecentConversationsList() {
     </Card>
   );
 }
-

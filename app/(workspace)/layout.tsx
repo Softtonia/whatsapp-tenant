@@ -9,7 +9,7 @@ import { ReauthDialog } from "@/components/layout/reauth-dialog";
 import { useAuthStore } from "@/lib/auth/store";
 import { useTenantStore } from "@/lib/tenant/store";
 import { useOnboardingProgressQuery, isOnboardingComplete } from "@/features/onboarding/hooks";
-import { Loader2, ShieldAlert } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 interface WorkspaceLayoutProps {
   children: React.ReactNode;
@@ -20,6 +20,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
   const token = useAuthStore((s) => s.token);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
+  const [isHydrated, setIsHydrated] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const isTenantLoading = useTenantStore((s) => s.isLoading);
@@ -33,21 +34,71 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
 
   const isCompleted = isOnboardingComplete(progressData);
 
+  // 1. Wait for client-side mount & hydration
   useEffect(() => {
-    // 1. If not authenticated, redirect to /login
-    if (!token && !isAuthenticated) {
+    setIsHydrated(true);
+  }, []);
+
+  // 2. Auth & Onboarding Navigation Guard
+  useEffect(() => {
+    if (!isHydrated) return;
+
+    // Check localStorage directly as a fallback to prevent hydration timing issues
+    let hasToken = Boolean(token || isAuthenticated);
+    if (!hasToken && typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("whatsapp-auth-storage");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed?.state?.token) {
+            hasToken = true;
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    // If genuinely not authenticated, redirect to /login
+    if (!hasToken) {
       router.replace("/login");
       return;
     }
 
-    // 2. If progress check finished and onboarding is NOT completed, redirect to /organization-setup
+    // If progress check finished and onboarding is NOT completed, redirect to /organization-setup
     if (isProgressFetched && !isCompleted) {
       router.replace("/organization-setup");
     }
-  }, [token, isAuthenticated, isProgressFetched, isCompleted, router]);
+  }, [isHydrated, token, isAuthenticated, isProgressFetched, isCompleted, router]);
 
-  // If unauthenticated, show auth redirecting
-  if (!token && !isAuthenticated) {
+  // While client hydration is running, show clean workspace loader
+  if (!isHydrated) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background space-y-3">
+        <Loader2 className="size-8 animate-spin text-primary" />
+        <p className="text-xs text-muted-foreground font-medium">Loading workspace...</p>
+      </div>
+    );
+  }
+
+  // Check token existence (including synchronous localStorage fallback)
+  let hasToken = Boolean(token || isAuthenticated);
+  if (!hasToken && typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem("whatsapp-auth-storage");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed?.state?.token) {
+          hasToken = true;
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // If unauthenticated, show redirecting state
+  if (!hasToken) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background space-y-3">
         <Loader2 className="size-8 animate-spin text-primary" />

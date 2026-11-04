@@ -12,74 +12,120 @@ import type { WhatsAppHealthData } from "@/types/tenant";
 export async function fetchDashboardOverview(
   tenantId?: string | number
 ): Promise<DashboardOverviewData> {
-  const response = await apiClient.get<DashboardOverviewData>(
+  const response: any = await apiClient.get<DashboardOverviewData>(
     API_ENDPOINTS.REPORTS.OVERVIEW,
     {
       tenantId: tenantId ? String(tenantId) : undefined,
     }
   );
-  return response.data;
+  return response?.data || response;
 }
 
 export async function fetchConversationActivity(
   tenantId?: string | number
 ): Promise<ConversationActivityPoint[]> {
-  const response = await apiClient.get<ConversationActivityPoint[]>(
-    API_ENDPOINTS.REPORTS.CONVERSATIONS,
-    {
-      tenantId: tenantId ? String(tenantId) : undefined,
+  try {
+    const response: any = await apiClient.get<any>(
+      API_ENDPOINTS.REPORTS.CONVERSATIONS,
+      {
+        tenantId: tenantId ? String(tenantId) : undefined,
+      }
+    );
+    const data = response?.data !== undefined ? response.data : response;
+    if (Array.isArray(data)) return data;
+    if (data && typeof data === "object") {
+      const candidates = [
+        data.data,
+        data.activity,
+        data.points,
+        data.conversations,
+        data.chart,
+        data.history,
+        data.items,
+      ];
+      for (const c of candidates) {
+        if (Array.isArray(c)) return c;
+      }
     }
-  );
-  return response.data;
+    return [];
+  } catch (err) {
+    console.warn("fetchConversationActivity error:", err);
+    return [];
+  }
 }
 
 export async function fetchRecentConversations(
   tenantId?: string | number,
   limit = 5
 ): Promise<Conversation[]> {
-  const response = await apiClient.get<Conversation[]>(
-    `${API_ENDPOINTS.CONVERSATIONS.LIST}?per_page=${limit}&sort_by=updated_at&sort_dir=desc`,
-    {
-      tenantId: tenantId ? String(tenantId) : undefined,
+  try {
+    const response: any = await apiClient.get<any>(
+      `${API_ENDPOINTS.CONVERSATIONS.LIST}?per_page=${limit}&sort_by=updated_at&sort_dir=desc`,
+      {
+        tenantId: tenantId ? String(tenantId) : undefined,
+      }
+    );
+    const data = response?.data !== undefined ? response.data : response;
+    if (Array.isArray(data)) return data;
+    if (data && typeof data === "object") {
+      const candidates = [data.data, data.conversations, data.items, data.results];
+      for (const c of candidates) {
+        if (Array.isArray(c)) return c;
+      }
     }
-  );
-  return response.data;
+    return [];
+  } catch (err) {
+    console.warn("fetchRecentConversations error:", err);
+    return [];
+  }
 }
 
 export async function fetchRecentCampaigns(
   tenantId?: string | number,
   limit = 5
 ): Promise<CampaignSummaryItem[]> {
-  const response = await apiClient.get<CampaignSummaryItem[]>(
-    `${API_ENDPOINTS.CAMPAIGNS.LIST}?per_page=${limit}&sort_by=created_at&sort_dir=desc`,
-    {
-      tenantId: tenantId ? String(tenantId) : undefined,
+  try {
+    const response: any = await apiClient.get<any>(
+      `${API_ENDPOINTS.CAMPAIGNS.LIST}?per_page=${limit}&sort_by=created_at&sort_dir=desc`,
+      {
+        tenantId: tenantId ? String(tenantId) : undefined,
+      }
+    );
+    const data = response?.data !== undefined ? response.data : response;
+    if (Array.isArray(data)) return data;
+    if (data && typeof data === "object") {
+      const candidates = [data.data, data.campaigns, data.items, data.results];
+      for (const c of candidates) {
+        if (Array.isArray(c)) return c;
+      }
     }
-  );
-  return response.data;
+    return [];
+  } catch (err) {
+    console.warn("fetchRecentCampaigns error:", err);
+    return [];
+  }
 }
 
 export async function fetchWhatsAppHealth(
   tenantId?: string | number
 ): Promise<WhatsAppHealthData> {
-  const response = await apiClient.get<WhatsAppHealthData>(
+  const response: any = await apiClient.get<WhatsAppHealthData>(
     API_ENDPOINTS.WHATSAPP.HEALTH,
     {
       tenantId: tenantId ? String(tenantId) : undefined,
     }
   );
-  return response.data;
+  return response?.data || response;
 }
 
 export async function fetchUsageSummary(
   tenantId?: string | number
 ): Promise<UsageSummaryData> {
-  const response = await apiClient.get<UsageSummaryData>(
+  const response: any = await apiClient.get<UsageSummaryData>(
     API_ENDPOINTS.BILLING.USAGE,
     {
       tenantId: tenantId ? String(tenantId) : undefined,
     }
   );
-  return response.data;
+  return response?.data || response;
 }
-

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useConversationActivityQuery } from "../hooks";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,8 +10,27 @@ import { BarChart3, RefreshCw, AlertCircle, TrendingUp } from "lucide-react";
 import type { ConversationActivityPoint } from "@/types/dashboard";
 
 export function ConversationActivityChart() {
-  const { data: points, isLoading, isError, refetch } = useConversationActivityQuery();
+  const { data: rawData, isLoading, isError, refetch } = useConversationActivityQuery();
   const [activeHoverIdx, setActiveHoverIdx] = useState<number | null>(null);
+
+  const points: ConversationActivityPoint[] = useMemo(() => {
+    if (Array.isArray(rawData)) return rawData;
+    if (rawData && typeof rawData === "object") {
+      const candidates = [
+        (rawData as any).data,
+        (rawData as any).activity,
+        (rawData as any).points,
+        (rawData as any).conversations,
+        (rawData as any).chart,
+        (rawData as any).history,
+        (rawData as any).items,
+      ];
+      for (const c of candidates) {
+        if (Array.isArray(c)) return c;
+      }
+    }
+    return [];
+  }, [rawData]);
 
   if (isLoading) {
     return (
@@ -34,7 +53,7 @@ export function ConversationActivityChart() {
     );
   }
 
-  if (isError || !points || points.length === 0) {
+  if (isError || !Array.isArray(points) || points.length === 0) {
     return (
       <Card className="border-border/80 shadow-xs">
         <CardHeader className="pb-2">
@@ -57,13 +76,15 @@ export function ConversationActivityChart() {
 
   // Calculate totals and maximum for SVG scaling
   const maxVolume = Math.max(
-    ...points.map((p) => Math.max(p.incoming, p.outgoing, p.resolved)),
+    ...points.map((p) =>
+      Math.max(Number(p?.incoming) || 0, Number(p?.outgoing) || 0, Number(p?.resolved) || 0)
+    ),
     50
   );
 
-  const totalIncoming = points.reduce((acc, p) => acc + p.incoming, 0);
-  const totalOutgoing = points.reduce((acc, p) => acc + p.outgoing, 0);
-  const totalResolved = points.reduce((acc, p) => acc + p.resolved, 0);
+  const totalIncoming = points.reduce((acc, p) => acc + (Number(p?.incoming) || 0), 0);
+  const totalOutgoing = points.reduce((acc, p) => acc + (Number(p?.outgoing) || 0), 0);
+  const totalResolved = points.reduce((acc, p) => acc + (Number(p?.resolved) || 0), 0);
 
   const activePoint: ConversationActivityPoint | null =
     activeHoverIdx !== null && points[activeHoverIdx] ? points[activeHoverIdx] : null;
@@ -104,17 +125,17 @@ export function ConversationActivityChart() {
           {activePoint ? (
             <>
               <span className="font-semibold text-foreground">
-                {activePoint.label} ({activePoint.date})
+                {activePoint.label || activePoint.date} ({activePoint.date})
               </span>
               <div className="flex items-center gap-3 text-[11px]">
                 <span className="text-emerald-600 dark:text-emerald-400 font-semibold font-mono">
-                  {formatNumber(activePoint.incoming)} in
+                  {formatNumber(activePoint.incoming || 0)} in
                 </span>
                 <span className="text-sky-600 dark:text-sky-400 font-semibold font-mono">
-                  {formatNumber(activePoint.outgoing)} out
+                  {formatNumber(activePoint.outgoing || 0)} out
                 </span>
                 <span className="text-violet-600 dark:text-violet-400 font-semibold font-mono">
-                  {formatNumber(activePoint.resolved)} resolved
+                  {formatNumber(activePoint.resolved || 0)} resolved
                 </span>
               </div>
             </>
@@ -129,14 +150,18 @@ export function ConversationActivityChart() {
         {/* Responsive Bar Chart View */}
         <div className="h-52 w-full flex items-end justify-between gap-2 sm:gap-4 pt-4 pb-2 border-b border-border/50">
           {points.map((p, idx) => {
-            const inHeight = (p.incoming / maxVolume) * 100;
-            const outHeight = (p.outgoing / maxVolume) * 100;
-            const resHeight = (p.resolved / maxVolume) * 100;
+            const incomingVal = Number(p?.incoming) || 0;
+            const outgoingVal = Number(p?.outgoing) || 0;
+            const resolvedVal = Number(p?.resolved) || 0;
+
+            const inHeight = (incomingVal / maxVolume) * 100;
+            const outHeight = (outgoingVal / maxVolume) * 100;
+            const resHeight = (resolvedVal / maxVolume) * 100;
             const isHovered = activeHoverIdx === idx;
 
             return (
               <div
-                key={p.date}
+                key={p.date || idx}
                 onMouseEnter={() => setActiveHoverIdx(idx)}
                 onMouseLeave={() => setActiveHoverIdx(null)}
                 className={`flex-1 flex flex-col items-center justify-end h-full gap-1 group cursor-pointer transition-transform ${
@@ -149,19 +174,19 @@ export function ConversationActivityChart() {
                   <div
                     style={{ height: `${Math.max(inHeight, 4)}%` }}
                     className="w-full bg-emerald-500 rounded-t-xs transition-all duration-300 group-hover:brightness-110"
-                    title={`Inbound: ${p.incoming}`}
+                    title={`Inbound: ${incomingVal}`}
                   />
                   {/* Outbound bar */}
                   <div
                     style={{ height: `${Math.max(outHeight, 4)}%` }}
                     className="w-full bg-sky-500 rounded-t-xs transition-all duration-300 group-hover:brightness-110"
-                    title={`Outbound: ${p.outgoing}`}
+                    title={`Outbound: ${outgoingVal}`}
                   />
                   {/* Resolved bar */}
                   <div
                     style={{ height: `${Math.max(resHeight, 4)}%` }}
                     className="w-full bg-violet-500 rounded-t-xs transition-all duration-300 group-hover:brightness-110"
-                    title={`Resolved: ${p.resolved}`}
+                    title={`Resolved: ${resolvedVal}`}
                   />
                 </div>
 
@@ -171,7 +196,7 @@ export function ConversationActivityChart() {
                     isHovered ? "text-primary font-bold" : "text-muted-foreground"
                   }`}
                 >
-                  {p.label}
+                  {p.label || p.date}
                 </span>
               </div>
             );
@@ -181,4 +206,3 @@ export function ConversationActivityChart() {
     </Card>
   );
 }
-

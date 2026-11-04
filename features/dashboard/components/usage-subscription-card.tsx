@@ -105,15 +105,17 @@ export function UsageSubscriptionCard() {
           <div>
             <div className="flex items-center gap-2">
               <span className="text-sm font-bold text-foreground">
-                {usage.plan_name} Tier
+                {usage.plan_name || "Starter"} Tier
               </span>
               <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 text-[10px] py-0 px-1.5 font-semibold">
                 Active
               </Badge>
             </div>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              Renews on {formatDateShort(usage.billing_cycle_end)}
-            </p>
+            {usage.billing_cycle_end && (
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Renews on {formatDateShort(usage.billing_cycle_end)}
+              </p>
+            )}
           </div>
 
           <Link href="/billing">
@@ -126,40 +128,47 @@ export function UsageSubscriptionCard() {
 
         {/* Quota Progress Bars */}
         <div className="space-y-3 pt-1">
-          <QuotaBar
-            label="Monthly Conversations"
-            used={usage.conversations.used}
-            limit={usage.conversations.limit}
-            percentage={usage.conversations.percentage}
-            unit="conversations"
-          />
+          {usage.conversations && (
+            <QuotaBar
+              label="Monthly Conversations"
+              used={usage.conversations.used ?? 0}
+              limit={usage.conversations.limit ?? 1000}
+              percentage={usage.conversations.percentage ?? 0}
+              unit="conversations"
+            />
+          )}
 
-          <QuotaBar
-            label="Total Contacts Directory"
-            used={usage.contacts.used}
-            limit={usage.contacts.limit}
-            percentage={usage.contacts.percentage}
-            unit="contacts"
-          />
+          {usage.contacts && (
+            <QuotaBar
+              label="Total Contacts Directory"
+              used={usage.contacts.used ?? 0}
+              limit={usage.contacts.limit ?? 2500}
+              percentage={usage.contacts.percentage ?? 0}
+              unit="contacts"
+            />
+          )}
 
-          <QuotaBar
-            label="Team Member Seats"
-            used={usage.team_seats.used}
-            limit={usage.team_seats.limit}
-            percentage={usage.team_seats.percentage}
-            unit="seats"
-          />
+          {usage.team_seats && (
+            <QuotaBar
+              label="Team Member Seats"
+              used={usage.team_seats.used ?? 0}
+              limit={usage.team_seats.limit ?? 5}
+              percentage={usage.team_seats.percentage ?? 0}
+              unit="seats"
+            />
+          )}
 
-          <QuotaBar
-            label="Connected WhatsApp Numbers"
-            used={usage.phone_numbers.used}
-            limit={usage.phone_numbers.limit}
-            percentage={usage.phone_numbers.percentage}
-            unit="numbers"
-          />
+          {usage.phone_numbers && (
+            <QuotaBar
+              label="Connected WhatsApp Numbers"
+              used={usage.phone_numbers.used ?? 0}
+              limit={usage.phone_numbers.limit ?? 1}
+              percentage={usage.phone_numbers.percentage ?? 0}
+              unit="numbers"
+            />
+          )}
         </div>
       </CardContent>
     </Card>
   );
 }
-

@@ -84,7 +84,13 @@ export function CampaignPerformanceCard() {
     );
   }
 
-  const list = campaigns || [];
+  const list: CampaignSummaryItem[] = Array.isArray(campaigns)
+    ? (campaigns as CampaignSummaryItem[])
+    : Array.isArray((campaigns as any)?.data)
+    ? ((campaigns as any).data as CampaignSummaryItem[])
+    : Array.isArray((campaigns as any)?.campaigns)
+    ? ((campaigns as any).campaigns as CampaignSummaryItem[])
+    : [];
 
   return (
     <Card className="border-border/80 shadow-xs">
