@@ -60,3 +60,14 @@ export function cn(...inputs: ClassValue[]): string {
   return str;
 }
 
+export function formatDate(date: string | number | Date): string {
+  try {
+    return new Date(date).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  } catch {
+    return String(date);
+  }
+}

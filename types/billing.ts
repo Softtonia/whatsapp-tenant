@@ -20,6 +20,7 @@ export interface SubscriptionPlan {
     whatsapp_numbers_limit: number;
   };
   is_popular?: boolean;
+  [key: string]: any;
 }
 
 export interface SubscriptionOverview {
@@ -27,7 +28,7 @@ export interface SubscriptionOverview {
   tenant_id: number | string;
   plan: SubscriptionPlan;
   status: SubscriptionStatus;
-  billing_cycle: BillingCycle;
+  billing_cycle: BillingCycle | "monthly" | "yearly";
   current_period_start: string;
   current_period_end: string;
   cancel_at_period_end: boolean;
@@ -38,6 +39,7 @@ export interface SubscriptionOverview {
     exp_month: number;
     exp_year: number;
   } | null;
+  [key: string]: any;
 }
 
 export interface QuotaMetric {
@@ -54,6 +56,32 @@ export interface QuotaUsageSummary {
   team_members: QuotaMetric;
   whatsapp_numbers: QuotaMetric;
   updated_at: string;
+  [key: string]: any;
+}
+
+export interface SubscriptionLimits {
+  monthly_conversations?: number;
+  monthly_marketing_messages?: number;
+  contacts_limit?: number;
+  team_members_limit?: number;
+  whatsapp_numbers_limit?: number;
+  custom_templates_limit?: number;
+  [key: string]: any;
+}
+
+export interface SubscriptionHistoryItem {
+  id: number | string;
+  action?: string;
+  description?: string;
+  plan_name?: string;
+  plan_tier?: string;
+  billing_cycle?: string;
+  amount?: number;
+  currency?: string;
+  status?: string;
+  invoice_number?: string;
+  created_at: string;
+  [key: string]: any;
 }
 
 export interface Invoice {
@@ -72,8 +100,16 @@ export interface Invoice {
 
 export interface ChangePlanPayload {
   plan_id: number | string;
-  billing_cycle?: BillingCycle;
+  subscription_plan_id?: number | string;
+  billing_cycle?: BillingCycle | "monthly" | "yearly" | "annual";
   effective_timing?: "immediate" | "period_end";
   reason?: string;
+  [key: string]: any;
 }
 
+export interface SelectPlanPayload {
+  plan_id?: number | string;
+  subscription_plan_id?: number | string;
+  billing_cycle?: BillingCycle | "monthly" | "yearly" | "annual";
+  [key: string]: any;
+}

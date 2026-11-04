@@ -1,5 +1,5 @@
-import type { Industry } from "./tenant";
-export type { Industry };
+import type { Industry, TenantDocument } from "./tenant";
+export type { Industry, TenantDocument };
 
 export type OnboardingStepKey =
   | "tenant_registration"

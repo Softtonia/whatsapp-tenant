@@ -1751,6 +1751,240 @@ export function getMockResponse<T>(path: string, method = "GET", body?: any): Ap
     };
   }
 
+  if (normalized === "/api/tenant/documents" && method === "POST") {
+    return {
+      success: true,
+      message: "Document uploaded successfully",
+      data: {
+        id: Math.floor(Math.random() * 1000) + 1,
+        name: "logo.png",
+        document_type: "logo",
+        type: "logo",
+        file_url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&auto=format&fit=crop",
+        url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&auto=format&fit=crop",
+        path: "tenants/1/documents/logo.png",
+        created_at: new Date().toISOString(),
+      } as unknown as T,
+    };
+  }
+
+  if (normalized === "/api/tenant/documents" && method === "GET") {
+    return {
+      success: true,
+      message: "Tenant documents retrieved successfully",
+      data: [] as unknown as T,
+    };
+  }
+
+  const docMatch = normalized.match(/^\/api\/tenant\/documents\/([^/]+)(?:\/(replace|status|download))?$/);
+  if (docMatch) {
+    const documentId = docMatch[1];
+    const action = docMatch[2];
+
+    if (!action && method === "GET") {
+      return {
+        success: true,
+        message: "Document retrieved successfully",
+        data: {
+          id: documentId,
+          name: "logo.png",
+          document_type: "logo",
+          status: "verified",
+          file_url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&auto=format&fit=crop",
+          url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&auto=format&fit=crop",
+          path: `tenants/1/documents/${documentId}.png`,
+          created_at: new Date().toISOString(),
+        } as unknown as T,
+      };
+    }
+
+    if (!action && method === "PUT") {
+      return {
+        success: true,
+        message: "Document updated successfully",
+        data: {
+          id: documentId,
+          ...(body || {}),
+          updated_at: new Date().toISOString(),
+        } as unknown as T,
+      };
+    }
+
+    if (action === "replace" && method === "POST") {
+      return {
+        success: true,
+        message: "Document replaced successfully",
+        data: {
+          id: documentId,
+          name: "replaced_logo.png",
+          document_type: "logo",
+          file_url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&auto=format&fit=crop",
+          url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&auto=format&fit=crop",
+          updated_at: new Date().toISOString(),
+        } as unknown as T,
+      };
+    }
+
+    if (action === "status" && method === "GET") {
+      return {
+        success: true,
+        message: "Document status retrieved successfully",
+        data: {
+          id: documentId,
+          status: "verified",
+          is_valid: true,
+          rejection_reason: null,
+          checked_at: new Date().toISOString(),
+        } as unknown as T,
+      };
+    }
+
+    if (action === "download" && method === "GET") {
+      return {
+        success: true,
+        message: "Download link generated successfully",
+        data: {
+          id: documentId,
+          download_url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&auto=format&fit=crop",
+        } as unknown as T,
+      };
+    }
+
+    if (!action && method === "DELETE") {
+      return {
+        success: true,
+        message: "Document deleted successfully",
+        data: { id: documentId } as unknown as T,
+      };
+    }
+  }
+
+  // --- TENANT SUBSCRIPTION ENDPOINTS ---
+  if (normalized === "/api/tenant/subscription/plans" && method === "GET") {
+    return {
+      success: true,
+      message: "Subscription plans retrieved successfully",
+      data: mockSubscriptionPlans as unknown as T,
+    };
+  }
+
+  const tenantPlanDetailMatch = normalized.match(/^\/api\/tenant\/subscription\/plans\/([a-zA-Z0-9_-]+)$/);
+  if (tenantPlanDetailMatch && method === "GET") {
+    const planId = tenantPlanDetailMatch[1];
+    const found = mockSubscriptionPlans.find((p) => String(p.id) === String(planId)) || mockSubscriptionPlans[0];
+    return {
+      success: true,
+      message: "Subscription plan detail retrieved successfully",
+      data: found as unknown as T,
+    };
+  }
+
+  if (normalized === "/api/tenant/subscription" && method === "GET") {
+    return {
+      success: true,
+      message: "Tenant subscription retrieved successfully",
+      data: mockSubscriptionOverview as unknown as T,
+    };
+  }
+
+  if (normalized === "/api/tenant/subscription/select-plan" && method === "POST") {
+    const planId = body?.plan_id || body?.subscription_plan_id || 1;
+    const selected = mockSubscriptionPlans.find((p) => String(p.id) === String(planId)) || mockSubscriptionPlans[0];
+    return {
+      success: true,
+      message: `Plan ${selected.name} selected successfully`,
+      data: {
+        ...mockSubscriptionOverview,
+        plan: selected,
+        billing_cycle: body?.billing_cycle || "monthly",
+        updated_at: new Date().toISOString(),
+      } as unknown as T,
+    };
+  }
+
+  if (normalized === "/api/tenant/subscription/change-plan" && method === "POST") {
+    const planId = body?.plan_id || body?.subscription_plan_id || 2;
+    const selected = mockSubscriptionPlans.find((p) => String(p.id) === String(planId)) || mockSubscriptionPlans[1];
+    return {
+      success: true,
+      message: `Subscription changed to ${selected.name} successfully`,
+      data: {
+        ...mockSubscriptionOverview,
+        plan: selected,
+        billing_cycle: body?.billing_cycle || "monthly",
+        updated_at: new Date().toISOString(),
+      } as unknown as T,
+    };
+  }
+
+  if (normalized === "/api/tenant/subscription/usage" && method === "GET") {
+    return {
+      success: true,
+      message: "Subscription usage retrieved successfully",
+      data: mockQuotaUsageSummary as unknown as T,
+    };
+  }
+
+  if (normalized === "/api/tenant/subscription/limits" && method === "GET") {
+    return {
+      success: true,
+      message: "Subscription limits retrieved successfully",
+      data: {
+        monthly_conversations: 50000,
+        monthly_marketing_messages: 25000,
+        contacts_limit: 15000,
+        team_members_limit: 10,
+        whatsapp_numbers_limit: 3,
+        custom_templates_limit: 100,
+      } as unknown as T,
+    };
+  }
+
+  if (normalized === "/api/tenant/subscription/history" && method === "GET") {
+    return {
+      success: true,
+      message: "Subscription history retrieved successfully",
+      data: [
+        {
+          id: 1,
+          action: "plan_changed",
+          description: "Plan upgraded to Professional Scale",
+          plan_name: "Professional Scale",
+          billing_cycle: "monthly",
+          amount: 99,
+          currency: "USD",
+          status: "succeeded",
+          invoice_number: "INV-2026-003",
+          created_at: new Date(Date.now() - 86400000 * 5).toISOString(),
+        },
+        {
+          id: 2,
+          action: "payment_succeeded",
+          description: "Monthly subscription renewal",
+          plan_name: "Growth Starter",
+          billing_cycle: "monthly",
+          amount: 49,
+          currency: "USD",
+          status: "succeeded",
+          invoice_number: "INV-2026-002",
+          created_at: new Date(Date.now() - 86400000 * 35).toISOString(),
+        },
+        {
+          id: 3,
+          action: "subscription_created",
+          description: "Initial subscription started",
+          plan_name: "Growth Starter",
+          billing_cycle: "monthly",
+          amount: 49,
+          currency: "USD",
+          status: "succeeded",
+          invoice_number: "INV-2026-001",
+          created_at: new Date(Date.now() - 86400000 * 65).toISOString(),
+        },
+      ] as unknown as T,
+    };
+  }
+
   if (normalized === "/api/auth/me" && method === "GET") {
     return {
       success: true,
@@ -1822,7 +2056,7 @@ export function getMockResponse<T>(path: string, method = "GET", body?: any): Ap
     };
   }
 
-  if (normalized === "/api/auth/mfa/verify" && method === "POST") {
+  if ((normalized === "/api/auth/mfa/verify" || normalized === "/api/auth/admin/mfa/verify") && method === "POST") {
     return {
       success: true,
       message: "MFA challenge verified successfully",
@@ -3272,7 +3506,19 @@ export function getMockResponse<T>(path: string, method = "GET", body?: any): Ap
     return {
       success: true,
       message: "MFA enabled and verified successfully",
-      data: { mfa_enabled: true } as unknown as T,
+      data: {
+        mfa_enabled: true,
+        recovery_codes: [
+          "A1B2-C3D4",
+          "E5F6-G7H8",
+          "I9J0-K1L2",
+          "M3N4-O5P6",
+          "Q7R8-S9T0",
+          "U1V2-W3X4",
+          "Y5Z6-A7B8",
+          "C9D0-E1F2",
+        ],
+      } as unknown as T,
     };
   }
 

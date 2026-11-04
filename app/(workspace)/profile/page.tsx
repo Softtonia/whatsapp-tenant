@@ -7,6 +7,7 @@ import { UserProfileForm } from "@/features/profile/components/user-profile-form
 import { ChangePasswordForm } from "@/features/profile/components/change-password-form";
 import { MfaSettingsCard } from "@/features/profile/components/mfa-settings-card";
 import { ActiveSessionsTable } from "@/features/profile/components/active-sessions-table";
+import { SubscriptionSection } from "@/features/profile/components/subscription-section";
 
 export default function ProfilePage() {
   const user = useAuthStore((s) => s.user);
@@ -16,16 +17,19 @@ export default function ProfilePage() {
     <div className="space-y-6 max-w-4xl">
       {/* Page Header */}
       <PageHeader
-        title="Profile, Password & Security"
-        description="Manage your agent profile, account credentials, two-factor authentication, and active browser sessions."
+        title="Profile, Security & Subscription"
+        description="Manage your agent profile, account credentials, subscription plan, quota limits, and security settings."
         breadcrumbs={[
           { label: "Workspace", href: "/dashboard" },
-          { label: "Profile & Security" },
+          { label: "Profile & Subscription" },
         ]}
       />
 
-      {/* Profile Form */}
+      {/* User Profile Form */}
       <UserProfileForm user={user} />
+
+      {/* Tenant Subscription, Quota Limits & History Section */}
+      <SubscriptionSection />
 
       {/* Password Change Form */}
       <ChangePasswordForm />

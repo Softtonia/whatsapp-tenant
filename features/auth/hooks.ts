@@ -7,6 +7,7 @@ import {
   resetPassword,
   acceptInvitation,
   verifyMfa,
+  verifyAdminMfa,
   enrollMfa,
   confirmMfa,
   disableMfa,
@@ -115,7 +116,53 @@ export function useMfaVerifyMutation() {
   const setAvailableTenants = useTenantStore((s) => s.setAvailableTenants);
 
   return useMutation({
-    mutationFn: (payload: { challenge_token: string; code: string }) => verifyMfa(payload),
+    mutationFn: (payload: {
+      challenge_token: string;
+      code: string;
+      recovery_code?: string;
+      is_recovery?: boolean;
+    }) => verifyMfa(payload),
+    onSuccess: (data: any) => {
+      const authToken = data?.token || data?.access_token;
+      const user = data?.user;
+
+      if (authToken && user) {
+        setCredentials(authToken, user);
+
+        const workspaces = data.workspaces || [];
+        setAvailableTenants(workspaces);
+
+        const activeWp =
+          data.current_workspace ||
+          (workspaces.length > 0
+            ? workspaces.find((w: any) => String(w.id) === String(user.tenant_id)) || workspaces[0]
+            : {
+                id: user.tenant_id || 1,
+                name: user.name ? `${user.name}'s Workspace` : "My Workspace",
+                status: "active",
+              });
+
+        setActiveTenant(activeWp);
+
+        queryClient.invalidateQueries({ queryKey: authKeys.me() });
+        queryClient.invalidateQueries({ queryKey: authKeys.workspaces() });
+      }
+    },
+  });
+}
+
+export function useAdminMfaVerifyMutation() {
+  const queryClient = useQueryClient();
+  const setCredentials = useAuthStore((s) => s.setCredentials);
+  const setActiveTenant = useTenantStore((s) => s.setActiveTenant);
+  const setAvailableTenants = useTenantStore((s) => s.setAvailableTenants);
+
+  return useMutation({
+    mutationFn: (payload: {
+      challenge_token: string;
+      code?: string;
+      recovery_code?: string;
+    }) => verifyAdminMfa(payload),
     onSuccess: (data: any) => {
       const authToken = data?.token || data?.access_token;
       const user = data?.user;

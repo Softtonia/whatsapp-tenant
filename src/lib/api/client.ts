@@ -30,13 +30,16 @@ export interface RequestConfig {
 }
 
 class ApiClient {
-  private getBaseUrl(): string {
-    const raw =
-      process.env.NEXT_PUBLIC_API_URL ||
-      env.NEXT_PUBLIC_API_URL ||
-      "https://whatsappcrmapi.softtonia.com";
-    return raw.replace(/\/+$/, "");
+private getBaseUrl(): string {
+  if (typeof window !== "undefined") {
+    return "";
   }
+
+  return (
+    process.env.BACKEND_API_URL ||
+    "https://whatsappcrmapi.softtonia.com"
+  ).replace(/\/+$/, "");
+}
 
   private buildUrl(endpoint: string, params?: Record<string, any>): string {
     const baseUrl = this.getBaseUrl();
@@ -103,9 +106,6 @@ class ApiClient {
       effectiveTenantId !== ""
     ) {
       headers["X-Tenant-ID"] = String(effectiveTenantId);
-      headers["X-Tenant-Id"] = String(effectiveTenantId);
-      headers["tenant-id"] = String(effectiveTenantId);
-      headers["Tenant-ID"] = String(effectiveTenantId);
     }
 
     const url = this.buildUrl(endpoint, config?.params);

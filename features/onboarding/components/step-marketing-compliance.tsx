@@ -31,7 +31,7 @@ export function StepMarketingCompliance({
     marketing_enabled: initialData.marketing_enabled ?? true,
     customer_opt_in_required: initialData.customer_opt_in_required ?? true,
     opt_in_method: initialData.opt_in_method || ["website_form", "checkout_form"],
-    privacy_policy_url: initialData.privacy_policy_url || "https://acmelogistics.com/privacy",
+    privacy_policy_url: initialData.privacy_policy_url || "",
     unsubscribe_enabled: initialData.unsubscribe_enabled ?? true,
     unsubscribe_keyword: initialData.unsubscribe_keyword || "STOP",
     default_language: initialData.default_language || "en",
@@ -208,15 +208,17 @@ export function StepMarketingCompliance({
               Default Country Code *
             </Label>
             <Input
+              type="tel"
               value={formData.default_country_code}
               onChange={(e) =>
                 setFormData((prev) => ({
                   ...prev,
-                  default_country_code: e.target.value,
+                  default_country_code: e.target.value.replace(/[^\d+]/g, ""),
                 }))
               }
               placeholder="+1"
               required
+              maxLength={6}
               className="text-xs h-9 font-mono"
             />
           </div>

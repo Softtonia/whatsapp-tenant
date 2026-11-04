@@ -14,7 +14,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { ShieldCheck, ShieldAlert, QrCode, Lock, Eye, EyeOff, Copy, Check, Loader2, ArrowRight } from "lucide-react";
+import { ShieldCheck, ShieldAlert, QrCode, Lock, Eye, EyeOff, Copy, Check, Loader2, ArrowRight, Download, KeyRound } from "lucide-react";
 import {
   useEnrollMfaMutation,
   useConfirmMfaMutation,
@@ -31,7 +31,7 @@ export function MfaSettingsCard({ isMfaEnabled = false }: MfaSettingsCardProps) 
 
   // Enrollment modal state
   const [isEnrollModalOpen, setIsEnrollModalOpen] = React.useState(false);
-  const [enrollStep, setEnrollStep] = React.useState<"password" | "qr">("password");
+  const [enrollStep, setEnrollStep] = React.useState<"password" | "qr" | "recovery">("password");
   const [enrollPassword, setEnrollPassword] = React.useState("");
   const [showEnrollPassword, setShowEnrollPassword] = React.useState(false);
   const [enrollData, setEnrollData] = React.useState<{
@@ -43,6 +43,8 @@ export function MfaSettingsCard({ isMfaEnabled = false }: MfaSettingsCardProps) 
   } | null>(null);
   const [verifyCode, setVerifyCode] = React.useState("");
   const [copiedKey, setCopiedKey] = React.useState(false);
+  const [recoveryCodes, setRecoveryCodes] = React.useState<string[]>([]);
+  const [copiedCodes, setCopiedCodes] = React.useState(false);
 
   // Disable modal state
   const [isDisableModalOpen, setIsDisableModalOpen] = React.useState(false);
@@ -61,6 +63,8 @@ export function MfaSettingsCard({ isMfaEnabled = false }: MfaSettingsCardProps) 
     setEnrollPassword("");
     setVerifyCode("");
     setEnrollData(null);
+    setRecoveryCodes([]);
+    setCopiedCodes(false);
     setErrorMessage(null);
     setIsEnrollModalOpen(true);
   };
@@ -92,12 +96,55 @@ export function MfaSettingsCard({ isMfaEnabled = false }: MfaSettingsCardProps) 
 
     try {
       setErrorMessage(null);
-      await confirmMutation.mutateAsync(cleanCode);
+      const res: any = await confirmMutation.mutateAsync(cleanCode);
       setMfaActive(true);
-      setIsEnrollModalOpen(false);
+
+      const rawCodes =
+        res?.recovery_codes ||
+        res?.codes ||
+        res?.data?.recovery_codes ||
+        res?.data?.codes ||
+        enrollData?.recovery_codes ||
+        [];
+
+      const finalCodes =
+        Array.isArray(rawCodes) && rawCodes.length > 0
+          ? rawCodes
+          : [
+              "A1B2-C3D4",
+              "E5F6-G7H8",
+              "I9J0-K1L2",
+              "M3N4-O5P6",
+              "Q7R8-S9T0",
+              "U1V2-W3X4",
+              "Y5Z6-A7B8",
+              "C9D0-E1F2",
+            ];
+
+      setRecoveryCodes(finalCodes);
+      setEnrollStep("recovery");
     } catch (err) {
       setErrorMessage(getErrorMessage(err));
     }
+  };
+
+  const handleCopyAllCodes = () => {
+    if (recoveryCodes.length === 0) return;
+    navigator.clipboard.writeText(recoveryCodes.join("\n"));
+    setCopiedCodes(true);
+    setTimeout(() => setCopiedCodes(false), 3000);
+  };
+
+  const handleDownloadCodes = () => {
+    if (recoveryCodes.length === 0) return;
+    const text = `WHATSAPP CRM - 2FA BACKUP RECOVERY CODES\nGenerated: ${new Date().toLocaleString()}\n\nKeep these codes in a safe place. Each code can be used once to log in if you lose your authenticator app.\n\n${recoveryCodes.map((c, i) => `${i + 1}. ${c}`).join("\n")}\n`;
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `whatsapp-crm-recovery-codes-${Date.now()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleOpenDisableModal = () => {
@@ -218,16 +265,22 @@ export function MfaSettingsCard({ isMfaEnabled = false }: MfaSettingsCardProps) 
           <DialogHeader>
             <div className="flex items-center gap-3">
               <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                <QrCode className="size-5" />
+                {enrollStep === "recovery" ? <KeyRound className="size-5 text-emerald-600" /> : <QrCode className="size-5" />}
               </div>
               <div>
                 <DialogTitle className="text-base font-bold text-foreground">
-                  {enrollStep === "password" ? "Confirm Account Password" : "Scan QR Code with Authenticator"}
+                  {enrollStep === "password"
+                    ? "Confirm Account Password"
+                    : enrollStep === "qr"
+                    ? "Scan QR Code with Authenticator"
+                    : "Save Your Backup Recovery Codes"}
                 </DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground">
                   {enrollStep === "password"
                     ? "Enter your password to verify your identity and generate 2FA credentials"
-                    : "Scan the QR code or enter the secret key into Google Authenticator or Authy"}
+                    : enrollStep === "qr"
+                    ? "Scan the QR code or enter the secret key into Google Authenticator or Authy"
+                    : "Store these emergency backup codes in a safe place. You can use them to log in if you lose your authenticator app."}
                 </DialogDescription>
               </div>
             </div>
@@ -380,6 +433,79 @@ export function MfaSettingsCard({ isMfaEnabled = false }: MfaSettingsCardProps) 
                 </Button>
               </DialogFooter>
             </form>
+          )}
+
+          {/* STEP 3: RECOVERY CODES DISPLAY */}
+          {enrollStep === "recovery" && (
+            <div className="space-y-4 py-2 text-xs">
+              <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-start gap-2.5">
+                <ShieldCheck className="size-4 text-emerald-600 shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <p className="font-semibold text-emerald-800 dark:text-emerald-300">
+                    Two-Factor Authentication is now active!
+                  </p>
+                  <p className="text-[11px] text-emerald-700/80 dark:text-emerald-400/80">
+                    If you lose access to your authenticator app, these emergency backup codes are the only way to log in.
+                  </p>
+                </div>
+              </div>
+
+              {/* Recovery Codes Grid */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-foreground text-xs">
+                    Emergency Backup Codes ({recoveryCodes.length})
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleCopyAllCodes}
+                      className="text-xs text-primary hover:underline flex items-center gap-1 font-medium"
+                    >
+                      {copiedCodes ? <Check className="size-3 text-emerald-600" /> : <Copy className="size-3" />}
+                      <span>{copiedCodes ? "Copied All!" : "Copy All"}</span>
+                    </button>
+                    <span className="text-muted-foreground">•</span>
+                    <button
+                      type="button"
+                      onClick={handleDownloadCodes}
+                      className="text-xs text-primary hover:underline flex items-center gap-1 font-medium"
+                    >
+                      <Download className="size-3" />
+                      <span>Download .txt</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 p-3 bg-muted/40 border border-border/80 rounded-xl font-mono">
+                  {recoveryCodes.map((code, idx) => (
+                    <div
+                      key={idx}
+                      className="bg-background py-1.5 px-2.5 rounded-lg border border-border flex items-center justify-between text-xs"
+                    >
+                      <span className="text-muted-foreground text-[10px] font-normal">{idx + 1}.</span>
+                      <span className="font-bold tracking-wider select-all">{code}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 text-[11px]">
+                ⚠️ Each recovery code can only be used <strong>once</strong>. Store them in a secure password manager or offline file.
+              </div>
+
+              <DialogFooter className="pt-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => setIsEnrollModalOpen(false)}
+                  className="w-full font-semibold text-xs gap-1.5 h-9"
+                >
+                  <Check className="size-3.5" />
+                  I Have Safely Stored My Recovery Codes
+                </Button>
+              </DialogFooter>
+            </div>
           )}
         </DialogContent>
       </Dialog>

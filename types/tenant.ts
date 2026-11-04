@@ -9,6 +9,26 @@ export interface Industry {
   is_active: boolean;
 }
 
+export interface TenantDocument {
+  id?: number | string;
+  name?: string;
+  title?: string;
+  file_name?: string;
+  file_url?: string;
+  url?: string;
+  path?: string;
+  document_type?: string;
+  type?: string;
+  mime_type?: string;
+  file_size?: number;
+  status?: "pending" | "verified" | "rejected" | "uploaded" | string;
+  rejection_reason?: string | null;
+  download_url?: string;
+  created_at?: string;
+  updated_at?: string;
+  [key: string]: any;
+}
+
 export interface Tenant {
   id: number | string;
   name: string;

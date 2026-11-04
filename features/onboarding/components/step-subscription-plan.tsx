@@ -1,10 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Check, ArrowRight, ArrowLeft, Loader2, Zap, Shield, Sparkles } from "lucide-react";
 import { useCompleteSubscriptionPlanMutation } from "../hooks";
+import {
+  useTenantSubscriptionPlansQuery,
+  useTenantSubscriptionPlanDetailQuery,
+  useTenantSubscriptionQuery,
+  useSelectTenantSubscriptionPlanMutation,
+} from "@/features/billing/hooks";
 import { getErrorMessage } from "@/src/lib/api/errors";
 import type { SubscriptionPlanData } from "@/types/onboarding";
 
@@ -14,7 +20,7 @@ interface StepSubscriptionPlanProps {
   onBack: () => void;
 }
 
-const PLANS = [
+const FALLBACK_PLANS = [
   {
     id: 1,
     name: "Growth Starter",
@@ -66,31 +72,76 @@ export function StepSubscriptionPlan({
   onNext,
   onBack,
 }: StepSubscriptionPlanProps) {
-  const [selectedPlanId, setSelectedPlanId] = useState<number>(
-    initialData.subscription_plan_id || 1
+  // 1. Fetch available plans from GET /api/tenant/subscription/plans
+  const { data: plansData, isLoading: loadingPlans } = useTenantSubscriptionPlansQuery();
+
+  // 2. Fetch current tenant subscription from GET /api/tenant/subscription
+  const { data: currentSubscription } = useTenantSubscriptionQuery();
+
+  const [selectedPlanId, setSelectedPlanId] = useState<number | string>(
+    initialData.subscription_plan_id || currentSubscription?.plan?.id || 1
   );
+
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">(
-    initialData.billing_cycle || "monthly"
+    (initialData.billing_cycle as "monthly" | "yearly") || "monthly"
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Sync if current subscription becomes available
+  useEffect(() => {
+    if (currentSubscription?.plan?.id && !initialData.subscription_plan_id) {
+      setSelectedPlanId(currentSubscription.plan.id);
+    }
+  }, [currentSubscription, initialData.subscription_plan_id]);
+
+  // 3. Fetch single plan details from GET /api/tenant/subscription/plans/{{plan_id}}
+  const { data: planDetail } = useTenantSubscriptionPlanDetailQuery(selectedPlanId);
+
+  // 4. Mutations: select-plan and complete onboarding step
+  const selectPlanMutation = useSelectTenantSubscriptionPlanMutation();
   const completeMutation = useCompleteSubscriptionPlanMutation();
 
   const handleComplete = async (e: React.FormEvent) => {
     e.preventDefault();
+    const planIdNum = Number(selectedPlanId) || 1;
     const payload: SubscriptionPlanData = {
-      subscription_plan_id: selectedPlanId,
+      subscription_plan_id: planIdNum,
       billing_cycle: billingCycle,
     };
 
     try {
       setErrorMessage(null);
+
+      // Call {{base_url}}/api/tenant/subscription/select-plan
+      await selectPlanMutation.mutateAsync({
+        plan_id: selectedPlanId,
+        subscription_plan_id: planIdNum,
+        billing_cycle: billingCycle,
+      });
+
+      // Call {{base_url}}/api/onboarding/steps/subscription_plan/complete
       await completeMutation.mutateAsync(payload);
       onNext(payload);
     } catch (err) {
       setErrorMessage(getErrorMessage(err));
     }
   };
+
+  const isPending = selectPlanMutation.isPending || completeMutation.isPending;
+
+  // Normalize plans with API response or fallback
+  const plans =
+    Array.isArray(plansData) && plansData.length > 0
+      ? plansData.map((p) => ({
+          id: p.id,
+          name: p.name,
+          description: p.description,
+          priceMonthly: p.price_monthly ?? (p as any).priceMonthly ?? 49,
+          priceYearly: p.price_annual ?? (p as any).priceYearly ?? Math.round((p.price_monthly ?? 49) * 0.8),
+          popular: p.is_popular ?? (p as any).popular ?? (p.tier === "growth" || p.name.toLowerCase().includes("scale")),
+          features: Array.isArray(p.features) ? p.features : [],
+        }))
+      : FALLBACK_PLANS;
 
   return (
     <form onSubmit={handleComplete} className="space-y-6">
@@ -115,7 +166,7 @@ export function StepSubscriptionPlan({
           onClick={() =>
             setBillingCycle((prev) => (prev === "monthly" ? "yearly" : "monthly"))
           }
-          className="relative inline-flex h-6 w-11 items-center rounded-full bg-primary/20 p-0.5 transition-colors"
+          className="relative inline-flex h-6 w-11 items-center rounded-full bg-primary/20 p-0.5 transition-colors focus:outline-none"
         >
           <span
             className={`inline-block size-5 transform rounded-full bg-primary transition-transform ${
@@ -134,16 +185,26 @@ export function StepSubscriptionPlan({
           >
             Annual Billing
           </span>
-          <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20 font-bold">
+          <Badge
+            variant="outline"
+            className="text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20 font-bold"
+          >
             Save 20%
           </Badge>
         </div>
       </div>
 
+      {loadingPlans && (
+        <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground py-2">
+          <Loader2 className="size-3.5 animate-spin" />
+          <span>Loading subscription plans from server...</span>
+        </div>
+      )}
+
       {/* Plan Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {PLANS.map((plan) => {
-          const isSelected = selectedPlanId === plan.id;
+        {plans.map((plan) => {
+          const isSelected = String(selectedPlanId) === String(plan.id);
           const price = billingCycle === "monthly" ? plan.priceMonthly : plan.priceYearly;
 
           return (
@@ -215,7 +276,7 @@ export function StepSubscriptionPlan({
           variant="outline"
           size="sm"
           onClick={onBack}
-          disabled={completeMutation.isPending}
+          disabled={isPending}
           className="text-xs gap-1.5"
         >
           <ArrowLeft className="size-3.5" />
@@ -225,10 +286,10 @@ export function StepSubscriptionPlan({
         <Button
           type="submit"
           size="sm"
-          disabled={completeMutation.isPending}
+          disabled={isPending}
           className="gap-2 font-semibold text-xs shadow-xs"
         >
-          {completeMutation.isPending ? (
+          {isPending ? (
             <>
               <Loader2 className="size-3.5 animate-spin" />
               Saving Plan...
@@ -244,4 +305,3 @@ export function StepSubscriptionPlan({
     </form>
   );
 }
-

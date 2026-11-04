@@ -55,13 +55,13 @@ export function StepTenantRegistration({
   onNext,
 }: StepTenantRegistrationProps) {
   const [formData, setFormData] = useState<TenantRegistrationData>({
-    name: initialData.name || initialData.workspace_name || "Acme Global Corp",
-    company_name: initialData.company_name || initialData.name || "Acme Global Corp",
-    country: initialData.country || "US",
+    name: initialData.name || initialData.workspace_name || "",
+    company_name: initialData.company_name || "",
+    country: initialData.country || "",
     timezone: initialData.timezone || "UTC",
     preferred_language: initialData.preferred_language || "en",
-    terms_accepted: initialData.terms_accepted ?? true,
-    subdomain: initialData.subdomain || "acme-global",
+    terms_accepted: initialData.terms_accepted ?? false,
+    subdomain: initialData.subdomain || "",
   });
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -73,9 +73,14 @@ export function StepTenantRegistration({
   const handleInputChange = (field: keyof TenantRegistrationData, value: any) => {
     setFormData((prev) => {
       const updated = { ...prev, [field]: value };
-      // Keep name and company_name in sync if user changes name
-      if (field === "name" && !prev.company_name) {
-        updated.company_name = value;
+      // Keep company_name and subdomain in sync if user changes name
+      if (field === "name") {
+        if (!prev.company_name || prev.company_name === prev.name) {
+          updated.company_name = value;
+        }
+        if (!prev.subdomain || prev.subdomain === prev.name.toLowerCase().replace(/[^a-z0-9-]/g, "")) {
+          updated.subdomain = value.toLowerCase().replace(/[^a-z0-9-]/g, "");
+        }
       }
       return updated;
     });

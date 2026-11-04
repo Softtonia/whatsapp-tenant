@@ -108,12 +108,31 @@ export async function enrollMfa(password?: string): Promise<{
   return res?.data || res;
 }
 
-export async function confirmMfa(code: string): Promise<{ success?: boolean; mfa_enabled?: boolean }> {
+export async function confirmMfa(code: string): Promise<{
+  success?: boolean;
+  mfa_enabled?: boolean;
+  recovery_codes?: string[];
+  codes?: string[];
+  data?: any;
+}> {
   const res: any = await apiClient.post<any>(
     API_ENDPOINTS.AUTH.MFA_CONFIRM,
     { code }
   );
-  return res?.data || res;
+  const data = res?.data || res;
+  const rawCodes =
+    res?.recovery_codes ||
+    data?.recovery_codes ||
+    res?.codes ||
+    data?.codes ||
+    [];
+
+  return {
+    ...(typeof res === "object" ? res : {}),
+    ...(typeof data === "object" ? data : {}),
+    recovery_codes: Array.isArray(rawCodes) ? rawCodes : [],
+    codes: Array.isArray(rawCodes) ? rawCodes : [],
+  };
 }
 
 export async function disableMfa(password: string, code?: string): Promise<{ success?: boolean; mfa_enabled?: boolean }> {

@@ -88,10 +88,48 @@ export async function acceptInvitation(
   };
 }
 
-export async function verifyMfa(payload: { challenge_token: string; code: string }): Promise<LoginResponseData> {
+export async function verifyMfa(payload: {
+  challenge_token: string;
+  code: string;
+  recovery_code?: string;
+  is_recovery?: boolean;
+}): Promise<LoginResponseData> {
+  const endpoint =
+    payload.is_recovery || payload.recovery_code
+      ? API_ENDPOINTS.AUTH.ADMIN_MFA_VERIFY
+      : API_ENDPOINTS.AUTH.MFA_VERIFY;
+
   const response: any = await apiClient.post<any>(
-    API_ENDPOINTS.AUTH.MFA_VERIFY,
-    payload,
+    endpoint,
+    {
+      challenge_token: payload.challenge_token,
+      code: payload.code,
+      ...(payload.recovery_code ? { recovery_code: payload.recovery_code } : {}),
+    },
+    { skipAuth: true }
+  );
+  const data = response?.data || {};
+  return {
+    ...response,
+    ...data,
+    token: response?.token || data?.token,
+    user: response?.user || data?.user,
+  };
+}
+
+export async function verifyAdminMfa(payload: {
+  challenge_token: string;
+  code?: string;
+  recovery_code?: string;
+}): Promise<LoginResponseData> {
+  const codeVal = payload.code || payload.recovery_code || "";
+  const response: any = await apiClient.post<any>(
+    API_ENDPOINTS.AUTH.ADMIN_MFA_VERIFY,
+    {
+      challenge_token: payload.challenge_token,
+      code: codeVal,
+      recovery_code: payload.recovery_code || codeVal,
+    },
     { skipAuth: true }
   );
   const data = response?.data || {};
@@ -124,15 +162,31 @@ export async function enrollMfa(password: string): Promise<{
   };
 }
 
-export async function confirmMfa(code: string): Promise<{ success: boolean; message?: string }> {
+export async function confirmMfa(code: string): Promise<{
+  success: boolean;
+  message?: string;
+  recovery_codes?: string[];
+  codes?: string[];
+  data?: any;
+}> {
   const response: any = await apiClient.post<any>(
     API_ENDPOINTS.AUTH.MFA_CONFIRM,
     { code }
   );
   const data = response?.data || response;
+  const rawCodes =
+    response?.recovery_codes ||
+    data?.recovery_codes ||
+    response?.codes ||
+    data?.codes ||
+    [];
+
   return {
     success: response?.success ?? data?.success ?? true,
     message: response?.message ?? data?.message,
+    recovery_codes: Array.isArray(rawCodes) ? rawCodes : [],
+    codes: Array.isArray(rawCodes) ? rawCodes : [],
+    data,
   };
 }
 

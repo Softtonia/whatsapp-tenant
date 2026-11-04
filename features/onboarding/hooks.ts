@@ -19,7 +19,16 @@ import {
   saveTeamInvitations,
   completeOnboarding,
   fetchTenantIndustries,
+  uploadTenantDocument,
+  fetchTenantDocuments,
+  fetchTenantDocument,
+  updateTenantDocument,
+  replaceTenantDocument,
+  fetchTenantDocumentStatus,
+  downloadTenantDocument,
+  deleteTenantDocument,
 } from "./api";
+import type { TenantDocument } from "@/types/onboarding";
 import { useTenantStore } from "@/lib/tenant/store";
 import type {
   TenantRegistrationData,
@@ -79,6 +88,112 @@ export function useTenantIndustriesQuery(tenantId?: string | number) {
     queryKey: ["tenant", "industries", tenantId],
     queryFn: () => fetchTenantIndustries(tenantId),
     staleTime: 1000 * 60 * 30,
+  });
+}
+
+export function useTenantDocumentsQuery(tenantId?: string | number) {
+  return useQuery({
+    queryKey: ["tenant", "documents", tenantId],
+    queryFn: () => fetchTenantDocuments(tenantId),
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export function useUploadTenantDocumentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (variables: {
+      file: File | FormData;
+      document_type?: string;
+      tenantId?: string | number;
+    }) =>
+      uploadTenantDocument(variables.file, {
+        document_type: variables.document_type || "logo",
+        tenantId: variables.tenantId,
+      }),
+  });
+}
+
+export function useTenantDocumentQuery(
+  documentId?: string | number | null,
+  tenantId?: string | number
+) {
+  return useQuery({
+    queryKey: ["tenant", "documents", documentId, tenantId],
+    queryFn: () => (documentId ? fetchTenantDocument(documentId, tenantId) : null),
+    enabled: Boolean(documentId),
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export function useTenantDocumentStatusQuery(
+  documentId?: string | number | null,
+  tenantId?: string | number
+) {
+  return useQuery({
+    queryKey: ["tenant", "documents", documentId, "status", tenantId],
+    queryFn: () => (documentId ? fetchTenantDocumentStatus(documentId, tenantId) : null),
+    enabled: Boolean(documentId),
+    staleTime: 1000 * 30, // 30s
+  });
+}
+
+export function useUpdateTenantDocumentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (variables: {
+      documentId: string | number;
+      data: Partial<TenantDocument>;
+      tenantId?: string | number;
+    }) => updateTenantDocument(variables.documentId, variables.data, variables.tenantId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["tenant", "documents", variables.documentId],
+      });
+    },
+  });
+}
+
+export function useReplaceTenantDocumentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (variables: {
+      documentId: string | number;
+      file: File | FormData;
+      name?: string;
+      title?: string;
+      document_type?: string;
+      tenantId?: string | number;
+    }) =>
+      replaceTenantDocument(variables.documentId, variables.file, {
+        name: variables.name,
+        title: variables.title,
+        document_type: variables.document_type,
+        tenantId: variables.tenantId,
+      }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["tenant", "documents", variables.documentId],
+      });
+    },
+  });
+}
+
+export function useDownloadTenantDocumentMutation() {
+  return useMutation({
+    mutationFn: (variables: {
+      documentId: string | number;
+      tenantId?: string | number;
+    }) => downloadTenantDocument(variables.documentId, variables.tenantId),
+  });
+}
+
+export function useDeleteTenantDocumentMutation() {
+  return useMutation({
+    mutationFn: (variables: {
+      documentId: string | number;
+      tenantId?: string | number;
+    }) => deleteTenantDocument(variables.documentId, variables.tenantId),
   });
 }
 

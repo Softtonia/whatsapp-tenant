@@ -67,11 +67,9 @@ export type AcceptInvitationFormData = z.infer<typeof acceptInvitationSchema>;
 
 export const mfaVerifySchema = z.object({
   challenge_token: z.string().min(1, "Challenge token is required"),
-  code: z
-    .string()
-    .min(6, "Verification code must be 6 digits")
-    .max(6, "Verification code must be 6 digits")
-    .regex(/^\d{6}$/, "Must be a 6-digit numeric code"),
+  code: z.string().min(1, "Security code or recovery code is required"),
+  recovery_code: z.string().optional(),
+  is_recovery: z.boolean().optional(),
 });
 
 export type MfaVerifyFormData = z.infer<typeof mfaVerifySchema>;

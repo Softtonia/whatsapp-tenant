@@ -8,15 +8,155 @@ import type {
   FinalActivationData,
   OnboardingProgressData,
   Industry,
+  TenantDocument,
 } from "@/types/onboarding";
 
-// 0. Tenant Industries
+// 0. Tenant Industries & Documents
 export async function fetchTenantIndustries(tenantId?: string | number): Promise<Industry[]> {
   const response: any = await apiClient.get<any>(API_ENDPOINTS.TENANT.INDUSTRIES, {
     tenantId,
   });
   const data = response?.data || response;
   return Array.isArray(data) ? data : data?.industries || [];
+}
+
+export async function uploadTenantDocument(
+  fileOrFormData: File | FormData,
+  metadata?: {
+    document_type?: string;
+    type?: string;
+    name?: string;
+    title?: string;
+    tenantId?: string | number;
+  }
+): Promise<any> {
+  let formData: FormData;
+
+  if (typeof FormData !== "undefined" && fileOrFormData instanceof FormData) {
+    formData = fileOrFormData;
+  } else if (typeof File !== "undefined" && fileOrFormData instanceof File) {
+    formData = new FormData();
+    formData.append("file", fileOrFormData);
+    formData.append("document", fileOrFormData);
+    const docType = metadata?.document_type || metadata?.type || "logo";
+    formData.append("document_type", docType);
+    formData.append("type", docType);
+    formData.append("name", metadata?.name || fileOrFormData.name);
+    formData.append("title", metadata?.title || metadata?.name || fileOrFormData.name);
+  } else {
+    formData = new FormData();
+    formData.append("file", fileOrFormData as any);
+  }
+
+  const response: any = await apiClient.post<any>(
+    API_ENDPOINTS.TENANT.DOCUMENTS,
+    formData,
+    {
+      tenantId: metadata?.tenantId,
+    }
+  );
+
+  return response?.data || response;
+}
+
+export async function fetchTenantDocuments(tenantId?: string | number): Promise<TenantDocument[]> {
+  const response: any = await apiClient.get<any>(API_ENDPOINTS.TENANT.DOCUMENTS, {
+    tenantId,
+  });
+  const data = response?.data || response;
+  return Array.isArray(data) ? data : data?.data || data?.documents || [];
+}
+
+export async function fetchTenantDocument(
+  documentId: string | number,
+  tenantId?: string | number
+): Promise<TenantDocument> {
+  const response: any = await apiClient.get<any>(
+    API_ENDPOINTS.TENANT.DOCUMENT_DETAIL(documentId),
+    { tenantId }
+  );
+  return response?.data || response;
+}
+
+export async function updateTenantDocument(
+  documentId: string | number,
+  data: Partial<TenantDocument>,
+  tenantId?: string | number
+): Promise<any> {
+  const response: any = await apiClient.put<any>(
+    API_ENDPOINTS.TENANT.DOCUMENT_UPDATE(documentId),
+    data,
+    { tenantId }
+  );
+  return response?.data || response;
+}
+
+export async function replaceTenantDocument(
+  documentId: string | number,
+  fileOrFormData: File | FormData,
+  metadata?: { name?: string; title?: string; document_type?: string; tenantId?: string | number }
+): Promise<any> {
+  let formData: FormData;
+
+  if (typeof FormData !== "undefined" && fileOrFormData instanceof FormData) {
+    formData = fileOrFormData;
+  } else if (typeof File !== "undefined" && fileOrFormData instanceof File) {
+    formData = new FormData();
+    formData.append("file", fileOrFormData);
+    formData.append("document", fileOrFormData);
+    if (metadata?.name || fileOrFormData.name) {
+      formData.append("name", metadata?.name || fileOrFormData.name);
+      formData.append("title", metadata?.title || metadata?.name || fileOrFormData.name);
+    }
+    if (metadata?.document_type) {
+      formData.append("document_type", metadata.document_type);
+      formData.append("type", metadata.document_type);
+    }
+  } else {
+    formData = new FormData();
+    formData.append("file", fileOrFormData as any);
+  }
+
+  const response: any = await apiClient.post<any>(
+    API_ENDPOINTS.TENANT.DOCUMENT_REPLACE(documentId),
+    formData,
+    { tenantId: metadata?.tenantId }
+  );
+
+  return response?.data || response;
+}
+
+export async function fetchTenantDocumentStatus(
+  documentId: string | number,
+  tenantId?: string | number
+): Promise<any> {
+  const response: any = await apiClient.get<any>(
+    API_ENDPOINTS.TENANT.DOCUMENT_STATUS(documentId),
+    { tenantId }
+  );
+  return response?.data || response;
+}
+
+export async function downloadTenantDocument(
+  documentId: string | number,
+  tenantId?: string | number
+): Promise<any> {
+  const response: any = await apiClient.get<any>(
+    API_ENDPOINTS.TENANT.DOCUMENT_DOWNLOAD(documentId),
+    { tenantId }
+  );
+  return response?.data || response;
+}
+
+export async function deleteTenantDocument(
+  documentId: string | number,
+  tenantId?: string | number
+): Promise<any> {
+  const response: any = await apiClient.delete<any>(
+    API_ENDPOINTS.TENANT.DOCUMENT_DELETE(documentId),
+    { tenantId }
+  );
+  return response?.data || response;
 }
 
 // 1. Overview & Step Information
