@@ -181,6 +181,65 @@ export async function fetchOnboardingRequirements(): Promise<any> {
   return response?.data || response;
 }
 
+/**
+ * Validates whether an onboarding progress payload indicates full onboarding completion.
+ */
+export function isOnboardingComplete(progress: any): boolean {
+  if (!progress) return false;
+
+  // 1. Explicit boolean flags
+  if (progress.is_completed === true || progress.completed === true) {
+    return true;
+  }
+
+  // 2. Completed / Active status
+  if (typeof progress.status === "string") {
+    const s = progress.status.toLowerCase();
+    if (s === "completed" || s === "active") {
+      return true;
+    }
+  }
+
+  // 3. Message indicating completion
+  if (typeof progress.message === "string") {
+    const m = progress.message.toLowerCase();
+    if (m.includes("already completed") || m.includes("onboarding completed")) {
+      return true;
+    }
+  }
+
+  // 4. Current step marked as completed / done
+  if (typeof progress.current_step === "string") {
+    const cs = progress.current_step.toLowerCase();
+    if (["completed", "done", "finished", "active"].includes(cs)) {
+      return true;
+    }
+  }
+
+  // 5. Progress percentage check
+  if (typeof progress.progress_percentage === "number" && progress.progress_percentage >= 100) {
+    return true;
+  }
+
+  // 6. Check if all 5 required steps are listed in completed_steps
+  const requiredSteps = [
+    "tenant_registration",
+    "business_information",
+    "subscription_plan",
+    "marketing_compliance",
+    "final_activation",
+  ];
+  if (
+    Array.isArray(progress.completed_steps) &&
+    progress.completed_steps.length >= requiredSteps.length &&
+    requiredSteps.every((step) => progress.completed_steps.includes(step))
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 // 2. Step: Tenant Registration
 export async function saveTenantRegistration(data: TenantRegistrationData): Promise<any> {
   const response: any = await apiClient.post<any>(

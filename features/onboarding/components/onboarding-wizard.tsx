@@ -1,20 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { StepTenantRegistration } from "./step-tenant-registration";
 import { StepBusinessInformation } from "./step-business-information";
 import { StepSubscriptionPlan } from "./step-subscription-plan";
 import { StepMarketingCompliance } from "./step-marketing-compliance";
 import { StepFinalActivation } from "./step-final-activation";
-import { useOnboardingProgressQuery } from "../hooks";
-import { Check, Building2, FileText, CreditCard, ShieldCheck, Rocket } from "lucide-react";
+import { useOnboardingProgressQuery, isOnboardingComplete } from "../hooks";
+import { Check, Building2, FileText, CreditCard, ShieldCheck, Rocket, RefreshCw } from "lucide-react";
 import type {
   TenantRegistrationData,
   BusinessInformationData,
   SubscriptionPlanData,
   MarketingComplianceData,
 } from "@/types/onboarding";
+
+export const ONBOARDING_STORAGE_KEY = "whatsapp_crm_onboarding_wizard_v1";
 
 const ONBOARDING_STEPS = [
   { id: 1, key: "tenant_registration", title: "Tenant", icon: Building2 },
@@ -24,67 +27,228 @@ const ONBOARDING_STEPS = [
   { id: 5, key: "final_activation", title: "Activation", icon: Rocket },
 ];
 
+const DEFAULT_TENANT_DATA: TenantRegistrationData = {
+  name: "",
+  company_name: "",
+  country: "",
+  timezone: "UTC",
+  preferred_language: "en",
+  terms_accepted: false,
+  workspace_name: "",
+  subdomain: "",
+};
+
+const DEFAULT_BUSINESS_DATA: Partial<BusinessInformationData> = {
+  legal_business_name: "",
+  business_display_name: "",
+  business_type: "corporation",
+  industry_id: 1,
+  business_email: "",
+  business_phone: "",
+  website_url: "",
+  business_description: "",
+  tax_registration_number: "",
+  registration_number: "",
+  country: "US",
+  state: "",
+  city: "",
+  postal_code: "",
+  address_line_1: "",
+  address_line_2: "",
+};
+
+const DEFAULT_PLAN_DATA: Partial<SubscriptionPlanData> = {
+  subscription_plan_id: 1,
+  billing_cycle: "monthly",
+};
+
+const DEFAULT_COMPLIANCE_DATA: Partial<MarketingComplianceData> = {
+  marketing_enabled: true,
+  customer_opt_in_required: true,
+  opt_in_method: ["website_form", "checkout_form"],
+  privacy_policy_url: "",
+  unsubscribe_enabled: true,
+  unsubscribe_keyword: "STOP",
+  default_language: "en",
+  default_country_code: "+1",
+};
+
 export function OnboardingWizard() {
+  const router = useRouter();
   const { data: progressData } = useOnboardingProgressQuery();
 
+  const [isHydrated, setIsHydrated] = useState(false);
   const [currentStep, setCurrentStep] = useState<number>(1);
+  const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
 
   // Stored wizard data across steps
-  const [tenantData, setTenantData] = useState<TenantRegistrationData>({
-    name: "",
-    company_name: "",
-    country: "",
-    timezone: "UTC",
-    preferred_language: "en",
-    terms_accepted: false,
-    workspace_name: "",
-    subdomain: "",
-  });
+  const [tenantData, setTenantData] = useState<TenantRegistrationData>(DEFAULT_TENANT_DATA);
+  const [businessData, setBusinessData] = useState<Partial<BusinessInformationData>>(DEFAULT_BUSINESS_DATA);
+  const [planData, setPlanData] = useState<Partial<SubscriptionPlanData>>(DEFAULT_PLAN_DATA);
+  const [complianceData, setComplianceData] = useState<Partial<MarketingComplianceData>>(DEFAULT_COMPLIANCE_DATA);
 
-  const [businessData, setBusinessData] = useState<Partial<BusinessInformationData>>({
-    legal_business_name: "",
-    business_display_name: "",
-    business_type: "corporation",
-    industry_id: 1,
-    business_email: "",
-    business_phone: "",
-    website_url: "",
-    business_description: "",
-    tax_registration_number: "",
-    registration_number: "",
-    country: "",
-    state: "",
-    city: "",
-    postal_code: "",
-    address_line_1: "",
-    address_line_2: "",
-  });
-
-  const [planData, setPlanData] = useState<Partial<SubscriptionPlanData>>({
-    subscription_plan_id: 1,
-    billing_cycle: "monthly",
-  });
-
-  const [complianceData, setComplianceData] = useState<Partial<MarketingComplianceData>>({
-    marketing_enabled: true,
-    customer_opt_in_required: true,
-    opt_in_method: ["website_form", "checkout_form"],
-    privacy_policy_url: "",
-    unsubscribe_enabled: true,
-    unsubscribe_keyword: "STOP",
-    default_language: "en",
-    default_country_code: "+1",
-  });
-
-  // Sync server progress if available
+  // 1. Initial Draft & Step Hydration (from localStorage & URL search params)
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    try {
+      const savedRaw = localStorage.getItem(ONBOARDING_STORAGE_KEY);
+      let restoredStep = 1;
+
+      if (savedRaw) {
+        const parsed = JSON.parse(savedRaw);
+        if (parsed.tenantData) setTenantData(parsed.tenantData);
+        if (parsed.businessData) setBusinessData(parsed.businessData);
+        if (parsed.planData) setPlanData(parsed.planData);
+        if (parsed.complianceData) setComplianceData(parsed.complianceData);
+        if (typeof parsed.currentStep === "number" && parsed.currentStep >= 1 && parsed.currentStep <= 5) {
+          restoredStep = parsed.currentStep;
+        }
+        if (parsed.updatedAt) {
+          setLastSavedTime(new Date(parsed.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+        }
+      }
+
+      // Check URL query param ?step=X (e.g. if user opened /onboarding?step=3)
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlStep = parseInt(urlParams.get("step") || "", 10);
+      if (urlStep >= 1 && urlStep <= 5) {
+        restoredStep = urlStep;
+      }
+
+      setCurrentStep(restoredStep);
+    } catch (err) {
+      console.warn("Failed to load onboarding draft from localStorage:", err);
+    } finally {
+      setIsHydrated(true);
+    }
+  }, []);
+
+  // 2. Persist State to localStorage and keep URL ?step= in sync
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const persistDraft = useCallback(
+    (step: number, tData: any, bData: any, pData: any, cData: any) => {
+      if (typeof window === "undefined") return;
+
+      try {
+        const payload = {
+          currentStep: step,
+          tenantData: tData,
+          businessData: bData,
+          planData: pData,
+          complianceData: cData,
+          updatedAt: new Date().toISOString(),
+        };
+        localStorage.setItem(ONBOARDING_STORAGE_KEY, JSON.stringify(payload));
+        setLastSavedTime(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+
+        // Keep URL ?step= in sync without triggering full page reloads
+        const url = new URL(window.location.href);
+        if (url.searchParams.get("step") !== String(step)) {
+          url.searchParams.set("step", String(step));
+          window.history.replaceState({}, "", url.toString());
+        }
+      } catch (err) {
+        console.warn("Failed to save onboarding draft to localStorage:", err);
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (!isHydrated) return;
+
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      persistDraft(currentStep, tenantData, businessData, planData, complianceData);
+    }, 150);
+
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, [isHydrated, currentStep, tenantData, businessData, planData, complianceData, persistDraft]);
+
+  // 3. Sync with Server Progress
+  useEffect(() => {
+    if (isOnboardingComplete(progressData)) {
+      try {
+        localStorage.removeItem(ONBOARDING_STORAGE_KEY);
+      } catch {}
+      router.replace("/dashboard");
+      return;
+    }
+
     if (progressData?.current_step) {
       const stepIdx = ONBOARDING_STEPS.findIndex((s) => s.key === progressData.current_step);
       if (stepIdx !== -1) {
-        setCurrentStep(stepIdx + 1);
+        const serverStep = stepIdx + 1;
+        setCurrentStep((prev) => Math.max(prev, serverStep));
+      }
+    } else if (Array.isArray(progressData?.completed_steps)) {
+      const completed = progressData.completed_steps;
+      let nextStep = 1;
+      for (let i = 0; i < ONBOARDING_STEPS.length; i++) {
+        if (completed.includes(ONBOARDING_STEPS[i].key)) {
+          nextStep = i + 2;
+        } else {
+          break;
+        }
+      }
+      if (nextStep <= 5) {
+        setCurrentStep((prev) => Math.max(prev, nextStep));
       }
     }
-  }, [progressData]);
+  }, [progressData, router]);
+
+  // Reset Draft function in case user wants to start completely clean
+  const handleResetDraft = () => {
+    if (typeof window !== "undefined") {
+      const confirmed = window.confirm("Are you sure you want to clear your saved progress and start from Step 1?");
+      if (!confirmed) return;
+
+      try {
+        localStorage.removeItem(ONBOARDING_STORAGE_KEY);
+      } catch {}
+
+      setTenantData(DEFAULT_TENANT_DATA);
+      setBusinessData(DEFAULT_BUSINESS_DATA);
+      setPlanData(DEFAULT_PLAN_DATA);
+      setComplianceData(DEFAULT_COMPLIANCE_DATA);
+      setCurrentStep(1);
+
+      const url = new URL(window.location.href);
+      url.searchParams.delete("step");
+      window.history.replaceState({}, "", url.toString());
+    }
+  };
+
+  const handleTenantChange = useCallback((data: Partial<TenantRegistrationData>) => {
+    setTenantData((prev) => ({ ...prev, ...data }));
+  }, []);
+
+  const handleBusinessChange = useCallback((data: Partial<BusinessInformationData>) => {
+    setBusinessData((prev) => ({ ...prev, ...data }));
+  }, []);
+
+  const handlePlanChange = useCallback((data: Partial<SubscriptionPlanData>) => {
+    setPlanData((prev) => ({ ...prev, ...data }));
+  }, []);
+
+  const handleComplianceChange = useCallback((data: Partial<MarketingComplianceData>) => {
+    setComplianceData((prev) => ({ ...prev, ...data }));
+  }, []);
+
+  if (!isHydrated) {
+    return (
+      <Card className="w-full max-w-3xl shadow-xl border-border/80">
+        <div className="flex flex-col items-center justify-center p-16 text-center space-y-3">
+          <div className="size-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+          <p className="text-xs text-muted-foreground font-medium">Restoring your onboarding workspace...</p>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card className="w-full max-w-3xl shadow-xl border-border/80">
@@ -154,12 +318,29 @@ export function OnboardingWizard() {
             {currentStep === 5 && "Review your configuration and launch your multi-tenant environment"}
           </CardDescription>
         </div>
+
+        {/* Autosave Status Bar */}
+        <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-2 px-2 border-t border-border/40 max-w-xl mx-auto">
+          <span className="flex items-center gap-1">
+            <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            Progress auto-saved {lastSavedTime ? `at ${lastSavedTime}` : "locally"}
+          </span>
+          <button
+            type="button"
+            onClick={handleResetDraft}
+            className="hover:text-destructive transition-colors text-[10px] flex items-center gap-1 cursor-pointer"
+          >
+            <RefreshCw className="size-2.5" />
+            Reset Draft
+          </button>
+        </div>
       </CardHeader>
 
       <CardContent className="pt-2">
         {currentStep === 1 && (
           <StepTenantRegistration
             initialData={tenantData}
+            onChange={handleTenantChange}
             onNext={(data) => {
               setTenantData(data);
               setCurrentStep(2);
@@ -170,6 +351,7 @@ export function OnboardingWizard() {
         {currentStep === 2 && (
           <StepBusinessInformation
             initialData={businessData}
+            onChange={handleBusinessChange}
             onNext={(data) => {
               setBusinessData(data);
               setCurrentStep(3);
@@ -181,6 +363,7 @@ export function OnboardingWizard() {
         {currentStep === 3 && (
           <StepSubscriptionPlan
             initialData={planData}
+            onChange={handlePlanChange}
             onNext={(data) => {
               setPlanData(data);
               setCurrentStep(4);
@@ -192,6 +375,7 @@ export function OnboardingWizard() {
         {currentStep === 4 && (
           <StepMarketingCompliance
             initialData={complianceData}
+            onChange={handleComplianceChange}
             onNext={(data) => {
               setComplianceData(data);
               setCurrentStep(5);

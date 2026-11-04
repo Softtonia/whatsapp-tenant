@@ -9,6 +9,10 @@ import type {
   Invoice,
   ChangePlanPayload,
   SelectPlanPayload,
+  CreateCheckoutPayload,
+  RazorpayCheckoutData,
+  VerifyPaymentPayload,
+  VerifyPaymentResponse,
 } from "@/types/billing";
 import type { CancelSubscriptionFormData } from "./schemas";
 
@@ -95,7 +99,7 @@ export async function fetchTenantSubscriptionHistory(
   tenantId?: string | number
 ): Promise<{ data: SubscriptionHistoryItem[]; total?: number; [key: string]: any }> {
   const res = await apiClient.get<any>(
-    API_ENDPOINTS.TENANT.SUBSCRIPTION.HISTORY,
+    API_ENDPOINTS.SUBSCRIPTION.PAYMENTS,
     {
       params: { per_page: params.per_page || 15, page: params.page || 1 },
       tenantId,
@@ -106,11 +110,13 @@ export async function fetchTenantSubscriptionHistory(
     return { data };
   }
   return {
-    data: data?.history || data?.data || [],
+    data: data?.history || data?.payments || data?.data || [],
     total: data?.total,
     ...data,
   };
 }
+
+export const fetchSubscriptionPayments = fetchTenantSubscriptionHistory;
 
 // 3. Backward-Compatible Billing Aliases
 export async function fetchSubscriptionOverview(): Promise<SubscriptionOverview> {
@@ -154,4 +160,65 @@ export async function verifyCheckoutStatus(
     API_ENDPOINTS.BILLING.CHECKOUT_STATUS(checkoutId)
   );
   return res.data;
+}
+
+// 4. Razorpay Subscription Checkout & Payment Verification Workflow
+// Step 3: Create checkout / Razorpay order (POST /api/subscription/checkout)
+export async function createBillingCheckout(
+  payload: CreateCheckoutPayload,
+  tenantId?: string | number
+): Promise<RazorpayCheckoutData> {
+  const res = await apiClient.post<any>(
+    API_ENDPOINTS.SUBSCRIPTION.CHECKOUT,
+    payload,
+    { tenantId }
+  );
+  return res?.data || res;
+}
+
+// Step 4: Verify payment signature and activate subscription (POST /api/subscription/verify-payment)
+export async function verifyBillingPayment(
+  payload: VerifyPaymentPayload,
+  tenantId?: string | number
+): Promise<VerifyPaymentResponse> {
+  const res = await apiClient.post<any>(
+    API_ENDPOINTS.SUBSCRIPTION.VERIFY_PAYMENT,
+    payload,
+    { tenantId }
+  );
+  return res?.data || res;
+}
+
+// Step 5: Load Razorpay Checkout SDK script safely
+export function loadRazorpayCheckoutScript(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (typeof window === "undefined") {
+      resolve(false);
+      return;
+    }
+    if ((window as any).Razorpay) {
+      resolve(true);
+      return;
+    }
+    const existing = document.getElementById("razorpay-checkout-script") as HTMLScriptElement | null;
+    if (existing) {
+      if ((window as any).Razorpay) {
+        resolve(true);
+        return;
+      }
+      existing.addEventListener("load", () => resolve(Boolean((window as any).Razorpay)));
+      existing.addEventListener("error", () => resolve(false));
+      setTimeout(() => {
+        resolve(Boolean((window as any).Razorpay));
+      }, 500);
+      return;
+    }
+    const script = document.createElement("script");
+    script.id = "razorpay-checkout-script";
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    script.onload = () => resolve(Boolean((window as any).Razorpay));
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
 }

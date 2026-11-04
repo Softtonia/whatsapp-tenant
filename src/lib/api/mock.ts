@@ -1940,7 +1940,7 @@ export function getMockResponse<T>(path: string, method = "GET", body?: any): Ap
     };
   }
 
-  if (normalized === "/api/tenant/subscription/history" && method === "GET") {
+  if ((normalized === "/api/subscription/payments" || normalized === "/api/tenant/subscription/history") && method === "GET") {
     return {
       success: true,
       message: "Subscription history retrieved successfully",
@@ -1982,6 +1982,79 @@ export function getMockResponse<T>(path: string, method = "GET", body?: any): Ap
           created_at: new Date(Date.now() - 86400000 * 65).toISOString(),
         },
       ] as unknown as T,
+    };
+  }
+
+  // Step 3 — Create checkout / Razorpay order (POST /api/subscription/checkout)
+  if ((normalized === "/api/subscription/checkout" || normalized === "/api/tenant/billing/checkout") && method === "POST") {
+    const planId = body?.plan_id || body?.subscription_plan_id || 2;
+    const selected = mockSubscriptionPlans.find((p) => String(p.id) === String(planId)) || mockSubscriptionPlans[1];
+    const isYearly = body?.billing_cycle === "yearly" || body?.billing_cycle === "annual";
+    const amountInCurrency = isYearly
+      ? selected.price_annual ?? Math.round(selected.price_monthly * 0.8 * 12)
+      : selected.price_monthly;
+    const amountInPaise = Math.round(amountInCurrency * 100);
+
+    return {
+      success: true,
+      message: "Razorpay checkout order created successfully",
+      data: {
+        order_id: `order_mock_${Date.now()}`,
+        key_id: "rzp_test_51MockKeyExample",
+        amount: amountInPaise,
+        currency: "INR",
+        plan_id: selected.id,
+        name: "WhatsApp CRM",
+        description: `${selected.name} Subscription Plan (${isYearly ? "Annual" : "Monthly"})`,
+        prefill: {
+          name: "Admin User",
+          email: "admin@workspace.com",
+          contact: "+919876543210",
+        },
+        notes: {
+          tenant_id: "1",
+          plan_name: selected.name,
+          billing_cycle: isYearly ? "yearly" : "monthly",
+        },
+      } as unknown as T,
+    };
+  }
+
+  // Step 4 — Verify payment signature & activate subscription (POST /api/subscription/verify-payment)
+  if ((normalized === "/api/subscription/verify-payment" || normalized === "/api/tenant/billing/verify-payment") && method === "POST") {
+    const planId = body?.plan_id || 2;
+    const selected = mockSubscriptionPlans.find((p) => String(p.id) === String(planId)) || mockSubscriptionPlans[1];
+    const isYearly = body?.billing_cycle === "yearly" || body?.billing_cycle === "annual";
+
+    mockSubscriptionOverview.plan = selected;
+    mockSubscriptionOverview.billing_cycle = isYearly ? "yearly" : "monthly";
+    mockSubscriptionOverview.status = "active";
+    mockSubscriptionOverview.current_period_end = new Date(
+      Date.now() + (isYearly ? 365 : 30) * 86400000
+    ).toISOString();
+
+    return {
+      success: true,
+      message: "Payment signature verified successfully. Subscription activated.",
+      data: {
+        subscription: mockSubscriptionOverview,
+        payment_id: body?.razorpay_payment_id || `pay_mock_${Date.now()}`,
+        order_id: body?.razorpay_order_id,
+        status: "active",
+      } as unknown as T,
+    };
+  }
+
+  // Step 7 — Webhook confirmation
+  if (normalized === "/api/v1/webhooks/payments/razorpay" && method === "POST") {
+    return {
+      success: true,
+      message: "Razorpay webhook event received and processed idempotently",
+      data: {
+        event_id: `evt_mock_${Date.now()}`,
+        event: body?.event || "payment.captured",
+        status: "processed",
+      } as unknown as T,
     };
   }
 

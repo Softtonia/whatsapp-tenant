@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +14,7 @@ import {
   Languages,
   FileCheck,
   Shield,
+  ExternalLink,
 } from "lucide-react";
 import {
   useSaveTenantRegistrationMutation,
@@ -24,6 +26,7 @@ import type { TenantRegistrationData } from "@/types/onboarding";
 interface StepTenantRegistrationProps {
   initialData: Partial<TenantRegistrationData>;
   onNext: (data: TenantRegistrationData) => void;
+  onChange?: (data: Partial<TenantRegistrationData>) => void;
 }
 
 const COMMON_TIMEZONES = [
@@ -50,14 +53,56 @@ const COMMON_LANGUAGES = [
   { code: "ar", name: "Arabic (ar)" },
 ];
 
+export const COMMON_COUNTRIES = [
+  { code: "US", name: "United States (US)" },
+  { code: "GB", name: "United Kingdom (GB)" },
+  { code: "IN", name: "India (IN)" },
+  { code: "AE", name: "United Arab Emirates (AE)" },
+  { code: "CA", name: "Canada (CA)" },
+  { code: "AU", name: "Australia (AU)" },
+  { code: "SG", name: "Singapore (SG)" },
+  { code: "DE", name: "Germany (DE)" },
+  { code: "FR", name: "France (FR)" },
+  { code: "SA", name: "Saudi Arabia (SA)" },
+  { code: "ES", name: "Spain (ES)" },
+  { code: "IT", name: "Italy (IT)" },
+  { code: "NL", name: "Netherlands (NL)" },
+  { code: "BR", name: "Brazil (BR)" },
+  { code: "MX", name: "Mexico (MX)" },
+  { code: "ZA", name: "South Africa (ZA)" },
+  { code: "JP", name: "Japan (JP)" },
+  { code: "ID", name: "Indonesia (ID)" },
+  { code: "MY", name: "Malaysia (MY)" },
+  { code: "PH", name: "Philippines (PH)" },
+  { code: "PK", name: "Pakistan (PK)" },
+  { code: "BD", name: "Bangladesh (BD)" },
+  { code: "NG", name: "Nigeria (NG)" },
+  { code: "KE", name: "Kenya (KE)" },
+  { code: "EG", name: "Egypt (EG)" },
+  { code: "TR", name: "Turkey (TR)" },
+  { code: "IE", name: "Ireland (IE)" },
+  { code: "CH", name: "Switzerland (CH)" },
+  { code: "SE", name: "Sweden (SE)" },
+  { code: "NO", name: "Norway (NO)" },
+  { code: "DK", name: "Denmark (DK)" },
+  { code: "NZ", name: "New Zealand (NZ)" },
+  { code: "PL", name: "Poland (PL)" },
+  { code: "PT", name: "Portugal (PT)" },
+  { code: "QA", name: "Qatar (QA)" },
+  { code: "KW", name: "Kuwait (KW)" },
+  { code: "OM", name: "Oman (OM)" },
+  { code: "BH", name: "Bahrain (BH)" },
+];
+
 export function StepTenantRegistration({
   initialData,
   onNext,
+  onChange,
 }: StepTenantRegistrationProps) {
   const [formData, setFormData] = useState<TenantRegistrationData>({
     name: initialData.name || initialData.workspace_name || "",
     company_name: initialData.company_name || "",
-    country: initialData.country || "",
+    country: initialData.country || "US",
     timezone: initialData.timezone || "UTC",
     preferred_language: initialData.preferred_language || "en",
     terms_accepted: initialData.terms_accepted ?? false,
@@ -73,15 +118,13 @@ export function StepTenantRegistration({
   const handleInputChange = (field: keyof TenantRegistrationData, value: any) => {
     setFormData((prev) => {
       const updated = { ...prev, [field]: value };
-      // Keep company_name and subdomain in sync if user changes name
+      // Keep subdomain in sync if user changes name and hasn't manually customized subdomain
       if (field === "name") {
-        if (!prev.company_name || prev.company_name === prev.name) {
-          updated.company_name = value;
-        }
         if (!prev.subdomain || prev.subdomain === prev.name.toLowerCase().replace(/[^a-z0-9-]/g, "")) {
           updated.subdomain = value.toLowerCase().replace(/[^a-z0-9-]/g, "");
         }
       }
+      onChange?.(updated);
       return updated;
     });
   };
@@ -89,7 +132,7 @@ export function StepTenantRegistration({
   const getPayload = (): TenantRegistrationData => {
     return {
       name: formData.name.trim(),
-      company_name: formData.company_name.trim() || formData.name.trim(),
+      company_name: formData.company_name.trim(),
       country: formData.country.trim().toUpperCase(),
       timezone: formData.timezone,
       preferred_language: formData.preferred_language,
@@ -158,7 +201,7 @@ export function StepTenantRegistration({
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
               <Building2 className="size-3.5 text-primary" />
-              Tenant / Workspace Name *
+              Workspace Name *
             </Label>
             <Input
               value={formData.name}
@@ -197,16 +240,21 @@ export function StepTenantRegistration({
               <Globe className="size-3.5 text-primary" />
               Country of Operation *
             </Label>
-            <Input
+            <select
               value={formData.country}
-              onChange={(e) => handleInputChange("country", e.target.value.toUpperCase())}
-              placeholder="US"
+              onChange={(e) => handleInputChange("country", e.target.value)}
+              className="w-full text-xs h-9 rounded-lg border border-border bg-background px-3 text-foreground focus:outline-none focus:border-ring"
               required
-              maxLength={2}
-              className="text-xs h-9 font-mono uppercase"
-            />
+            >
+              <option value="" disabled>Select country</option>
+              {COMMON_COUNTRIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
             <p className="text-[11px] text-muted-foreground">
-              2-letter ISO country code (e.g. US, GB, IN, CA, AE).
+              2-letter ISO country code for tenant routing and compliance.
             </p>
           </div>
 
@@ -287,7 +335,17 @@ export function StepTenantRegistration({
             className="text-xs text-muted-foreground leading-normal cursor-pointer select-none"
           >
             I confirm and accept the{" "}
-            <strong className="text-foreground">Terms of Service</strong> and Multi-Tenant Isolation Agreement for this workspace.
+            <Link
+              href="/terms-of-service"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="font-bold text-primary underline underline-offset-4 hover:text-primary/80 transition-colors inline-flex items-center gap-0.5"
+            >
+              <span>Terms of Service</span>
+              <ExternalLink className="size-3 inline shrink-0" />
+            </Link>{" "}
+            for this workspace.
           </label>
         </div>
 

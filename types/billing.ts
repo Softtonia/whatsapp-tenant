@@ -113,3 +113,48 @@ export interface SelectPlanPayload {
   billing_cycle?: BillingCycle | "monthly" | "yearly" | "annual";
   [key: string]: any;
 }
+
+export interface CreateCheckoutPayload {
+  plan_id: number | string;
+  subscription_plan_id?: number | string;
+  billing_cycle?: BillingCycle | "monthly" | "yearly" | "annual";
+  currency?: string;
+  amount?: number;
+  [key: string]: any;
+}
+
+export interface RazorpayCheckoutData {
+  order_id: string;
+  key_id: string;
+  amount: number;
+  currency: string;
+  plan_id?: number | string;
+  name?: string;
+  description?: string;
+  prefill?: {
+    name?: string;
+    email?: string;
+    contact?: string;
+  };
+  notes?: Record<string, any>;
+  [key: string]: any;
+}
+
+export interface VerifyPaymentPayload {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+  plan_id?: number | string;
+  billing_cycle?: BillingCycle | "monthly" | "yearly" | "annual";
+  [key: string]: any;
+}
+
+export interface VerifyPaymentResponse {
+  success: boolean;
+  message?: string;
+  subscription?: SubscriptionOverview;
+  payment_id?: string;
+  order_id?: string;
+  status?: string;
+  [key: string]: any;
+}

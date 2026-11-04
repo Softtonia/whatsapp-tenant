@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,7 @@ interface StepMarketingComplianceProps {
   initialData: Partial<MarketingComplianceData>;
   onNext: (data: MarketingComplianceData) => void;
   onBack: () => void;
+  onChange?: (data: Partial<MarketingComplianceData>) => void;
 }
 
 const OPT_IN_OPTIONS = [
@@ -26,6 +27,7 @@ export function StepMarketingCompliance({
   initialData,
   onNext,
   onBack,
+  onChange,
 }: StepMarketingComplianceProps) {
   const [formData, setFormData] = useState<MarketingComplianceData>({
     marketing_enabled: initialData.marketing_enabled ?? true,
@@ -42,13 +44,23 @@ export function StepMarketingCompliance({
 
   const completeMutation = useCompleteMarketingComplianceMutation();
 
+  const handleInputChange = (field: keyof MarketingComplianceData, value: any) => {
+    setFormData((prev) => {
+      const updated = { ...prev, [field]: value };
+      onChange?.(updated);
+      return updated;
+    });
+  };
+
   const toggleOptInMethod = (methodId: string) => {
     setFormData((prev) => {
       const exists = prev.opt_in_method.includes(methodId);
-      const updated = exists
-        ? prev.opt_in_method.filter((m) => m !== methodId)
+      const updatedMethods = exists
+        ? prev.opt_in_method.filter((id) => id !== methodId)
         : [...prev.opt_in_method, methodId];
-      return { ...prev, opt_in_method: updated };
+      const updated = { ...prev, opt_in_method: updatedMethods };
+      onChange?.(updated);
+      return updated;
     });
   };
 
@@ -105,9 +117,7 @@ export function StepMarketingCompliance({
           <input
             type="checkbox"
             checked={formData.marketing_enabled}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, marketing_enabled: e.target.checked }))
-            }
+            onChange={(e) => handleInputChange("marketing_enabled", e.target.checked)}
             className="size-4 rounded border-border text-primary focus:ring-primary shrink-0 mt-0.5 cursor-pointer"
           />
         </div>
@@ -125,12 +135,7 @@ export function StepMarketingCompliance({
           <input
             type="checkbox"
             checked={formData.customer_opt_in_required}
-            onChange={(e) =>
-              setFormData((prev) => ({
-                ...prev,
-                customer_opt_in_required: e.target.checked,
-              }))
-            }
+            onChange={(e) => handleInputChange("customer_opt_in_required", e.target.checked)}
             className="size-4 rounded border-border text-primary focus:ring-primary shrink-0 mt-0.5 cursor-pointer"
           />
         </div>
@@ -174,9 +179,7 @@ export function StepMarketingCompliance({
           <Input
             type="url"
             value={formData.privacy_policy_url}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, privacy_policy_url: e.target.value }))
-            }
+            onChange={(e) => handleInputChange("privacy_policy_url", e.target.value)}
             placeholder="https://company.com/privacy"
             required
             className="text-xs h-9"
@@ -191,12 +194,7 @@ export function StepMarketingCompliance({
             </Label>
             <Input
               value={formData.unsubscribe_keyword}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  unsubscribe_keyword: e.target.value.toUpperCase(),
-                }))
-              }
+              onChange={(e) => handleInputChange("unsubscribe_keyword", e.target.value.toUpperCase())}
               placeholder="STOP"
               required
               className="text-xs h-9 font-mono uppercase"
@@ -210,12 +208,7 @@ export function StepMarketingCompliance({
             <Input
               type="tel"
               value={formData.default_country_code}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  default_country_code: e.target.value.replace(/[^\d+]/g, ""),
-                }))
-              }
+              onChange={(e) => handleInputChange("default_country_code", e.target.value.replace(/[^\d+]/g, ""))}
               placeholder="+1"
               required
               maxLength={6}
@@ -229,9 +222,7 @@ export function StepMarketingCompliance({
             </Label>
             <select
               value={formData.default_language}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, default_language: e.target.value }))
-              }
+              onChange={(e) => handleInputChange("default_language", e.target.value)}
               className="w-full text-xs h-9 rounded-lg border border-border bg-background px-3 text-foreground focus:outline-none focus:border-ring"
             >
               <option value="en">English (en)</option>

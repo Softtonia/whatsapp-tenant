@@ -8,6 +8,7 @@ import Link from "next/link";
 import { loginSchema, type LoginFormData } from "../schemas";
 import { useLoginMutation } from "../hooks";
 import { useAuthStore } from "@/lib/auth/store";
+import { fetchOnboardingProgress, isOnboardingComplete } from "@/features/onboarding/api";
 import { MfaVerifyForm } from "./mfa-verify-form";
 import { getErrorMessage } from "@/src/lib/api/errors";
 import { Button } from "@/components/ui/button";
@@ -47,13 +48,23 @@ export function LoginForm() {
         return;
       }
 
-      // Check if user has no workspaces or workspace is required
-      const needsOnboarding =
+      // Check onboarding completion status before deciding whether to show dashboard
+      let targetUrl = "/organization-setup";
+      const explicitlyNeedsOnboarding =
         res?.workspace_required ||
         !res?.workspaces ||
         res.workspaces.length === 0;
 
-      const targetUrl = needsOnboarding ? "/organization-setup" : "/dashboard";
+      if (!explicitlyNeedsOnboarding) {
+        try {
+          const progress = await fetchOnboardingProgress();
+          if (isOnboardingComplete(progress)) {
+            targetUrl = "/dashboard";
+          }
+        } catch {
+          targetUrl = "/organization-setup";
+        }
+      }
 
       if (typeof window !== "undefined") {
         window.location.href = targetUrl;

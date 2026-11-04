@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -12,6 +13,7 @@ import {
   ArrowLeft,
   Loader2,
   FileText,
+  ExternalLink,
 } from "lucide-react";
 import {
   useCompleteFinalActivationMutation,
@@ -73,6 +75,11 @@ export function StepFinalActivation({
         };
 
       setActiveTenant(activeTenantData);
+
+      // Clear persisted onboarding draft upon successful activation
+      try {
+        localStorage.removeItem("whatsapp_crm_onboarding_wizard_v1");
+      } catch {}
 
       // Navigate straight to dashboard
       if (typeof window !== "undefined") {
@@ -171,7 +178,17 @@ export function StepFinalActivation({
         />
         <label htmlFor="terms" className="text-xs text-muted-foreground leading-normal cursor-pointer select-none">
           I confirm that all company details provided are accurate and agree to adhere to the{" "}
-          <strong className="text-foreground">Meta WhatsApp Business Terms of Service</strong> and Multi-Tenant Acceptable Use Policy.
+          <Link
+            href="/terms-of-service"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="font-bold text-primary underline underline-offset-4 hover:text-primary/80 transition-colors inline-flex items-center gap-0.5"
+          >
+            <span>Terms of Service</span>
+            <ExternalLink className="size-3 inline shrink-0" />
+          </Link>
+          .
         </label>
       </div>
 

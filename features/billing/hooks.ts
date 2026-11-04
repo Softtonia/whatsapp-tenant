@@ -14,11 +14,15 @@ import {
   fetchInvoiceDetail,
   changeSubscriptionPlan,
   cancelSubscription,
+  createBillingCheckout,
+  verifyBillingPayment,
 } from "./api";
 import { useActiveTenant } from "@/lib/tenant/hooks";
 import type {
   ChangePlanPayload,
   SelectPlanPayload,
+  CreateCheckoutPayload,
+  VerifyPaymentPayload,
 } from "@/types/billing";
 import type { CancelSubscriptionFormData } from "./schemas";
 
@@ -200,3 +204,39 @@ export function useCancelSubscriptionMutation() {
     },
   });
 }
+
+// Step 4: Razorpay Checkout Order Creation
+export function useCreateBillingCheckoutMutation(tenantIdOverride?: string | number) {
+  const { activeTenant } = useActiveTenant();
+  const tenantId = tenantIdOverride ?? activeTenant?.id;
+
+  return useMutation({
+    mutationFn: (payload: CreateCheckoutPayload) =>
+      createBillingCheckout(payload, tenantId),
+  });
+}
+
+// Step 6: Razorpay Payment Signature Verification & Subscription Activation
+export function useVerifyBillingPaymentMutation(tenantIdOverride?: string | number) {
+  const queryClient = useQueryClient();
+  const { activeTenant } = useActiveTenant();
+  const tenantId = tenantIdOverride ?? activeTenant?.id;
+
+  return useMutation({
+    mutationFn: (payload: VerifyPaymentPayload) =>
+      verifyBillingPayment(payload, tenantId),
+    onSuccess: (data) => {
+      // Invalidate and sync all tenant subscription queries
+      queryClient.invalidateQueries({ queryKey: billingKeys.subscription(tenantId) });
+      queryClient.invalidateQueries({ queryKey: billingKeys.usage(tenantId) });
+      queryClient.invalidateQueries({ queryKey: billingKeys.limits(tenantId) });
+      queryClient.invalidateQueries({ queryKey: billingKeys.history(tenantId) });
+      queryClient.invalidateQueries({ queryKey: billingKeys.invoices(tenantId) });
+    },
+  });
+}
+
+// Aliases matching the subscription API routes
+export const useSubscriptionCheckoutMutation = useCreateBillingCheckoutMutation;
+export const useSubscriptionVerifyPaymentMutation = useVerifyBillingPaymentMutation;
+export const useSubscriptionPaymentsQuery = useTenantSubscriptionHistoryQuery;

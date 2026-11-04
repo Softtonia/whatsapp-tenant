@@ -27,6 +27,7 @@ import {
   fetchTenantDocumentStatus,
   downloadTenantDocument,
   deleteTenantDocument,
+  isOnboardingComplete,
 } from "./api";
 import type { TenantDocument } from "@/types/onboarding";
 import { useTenantStore } from "@/lib/tenant/store";
@@ -220,7 +221,7 @@ export function useCompleteTenantRegistrationMutation() {
 export function useSaveBusinessInfoMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: Partial<BusinessInformationData>) => saveBusinessInformation(data),
+    mutationFn: (data: Partial<BusinessInformationData> | FormData) => saveBusinessInformation(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: onboardingKeys.progress() });
     },
@@ -345,3 +346,5 @@ export function useCompleteOnboardingMutation() {
     },
   });
 }
+
+export { isOnboardingComplete };

@@ -54,8 +54,23 @@ export const API_ENDPOINTS = {
       CHANGE_PLAN: "/api/tenant/subscription/change-plan",
       USAGE: "/api/tenant/subscription/usage",
       LIMITS: "/api/tenant/subscription/limits",
-      HISTORY: "/api/tenant/subscription/history",
+      HISTORY: "/api/subscription/payments",
+      PAYMENTS: "/api/subscription/payments",
     },
+    BILLING: {
+      CHECKOUT: "/api/subscription/checkout",
+      VERIFY_PAYMENT: "/api/subscription/verify-payment",
+    },
+  },
+  SUBSCRIPTION: {
+    PLANS: "/api/tenant/subscription/plans",
+    PLAN_DETAIL: (planId: string | number) => `/api/tenant/subscription/plans/${planId}`,
+    CHECKOUT: "/api/subscription/checkout",
+    VERIFY_PAYMENT: "/api/subscription/verify-payment",
+    PAYMENTS: "/api/subscription/payments",
+  },
+  WEBHOOKS: {
+    RAZORPAY: "/api/v1/webhooks/payments/razorpay",
   },
   WORKSPACES: {
     LIST: "/api/workspaces",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,6 +22,7 @@ import {
   User,
   Phone,
   Lock,
+  Mail,
   AlertCircle,
   CheckCircle2,
   ArrowRight,
@@ -34,6 +35,8 @@ function AcceptInvitationFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialToken = searchParams.get("token") || "";
+  const initialEmail = searchParams.get("email") || searchParams.get("mail") || searchParams.get("to") || "";
+  const displayEmail = initialEmail || "invited.member@workspace.com";
 
   const [serverError, setServerError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -45,11 +48,13 @@ function AcceptInvitationFormContent() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<AcceptInvitationFormData>({
     resolver: zodResolver(acceptInvitationSchema),
     defaultValues: {
       token: initialToken,
+      email: displayEmail,
       first_name: "",
       last_name: "",
       phone_number: "",
@@ -57,6 +62,15 @@ function AcceptInvitationFormContent() {
       password_confirmation: "",
     },
   });
+
+  useEffect(() => {
+    if (initialToken) {
+      setValue("token", initialToken);
+    }
+    if (displayEmail) {
+      setValue("email", displayEmail);
+    }
+  }, [initialToken, displayEmail, setValue]);
 
   const onSubmit = async (data: AcceptInvitationFormData) => {
     setServerError(null);
@@ -118,20 +132,42 @@ function AcceptInvitationFormContent() {
             </div>
           )}
 
-          {/* Invitation Token (hidden if provided in URL or visible input if needed) */}
+          {/* Hidden Invitation Token Input */}
+          <input type="hidden" {...register("token")} />
+          {errors.token && (
+            <div className="flex items-center gap-2 p-2.5 text-xs rounded-lg bg-destructive/10 text-destructive border border-destructive/20">
+              <AlertCircle className="size-4 shrink-0" />
+              <span>{errors.token.message}</span>
+            </div>
+          )}
+
+          {/* Uneditable Email Address Field */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-              <span>Invitation Token</span>
-            </label>
-            <Input
-              type="text"
-              placeholder="e.g. inv_token_abc123"
-              {...register("token")}
-              className="font-mono text-xs"
-            />
-            {errors.token && (
-              <p className="text-[11px] text-destructive">{errors.token.message}</p>
-            )}
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <Mail className="size-3.5 text-muted-foreground" />
+                <span>Invited Email Address</span>
+              </label>
+              <span className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
+                <Lock className="size-3" />
+                Uneditable
+              </span>
+            </div>
+            <div className="relative">
+              <Input
+                type="email"
+                value={displayEmail}
+                readOnly
+                disabled
+                tabIndex={-1}
+                aria-readonly="true"
+                className="bg-muted/60 text-muted-foreground cursor-not-allowed select-none font-medium text-xs pr-8 border-border/80"
+              />
+              <Lock className="absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground/60 pointer-events-none" />
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              This invitation is designated for this specific email address and cannot be changed.
+            </p>
           </div>
 
           {/* Name Fields */}

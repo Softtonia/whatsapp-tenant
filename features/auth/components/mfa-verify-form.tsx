@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { mfaVerifySchema, type MfaVerifyFormData } from "../schemas";
 import { useMfaVerifyMutation, useAdminMfaVerifyMutation } from "../hooks";
 import { useAuthStore } from "@/lib/auth/store";
+import { fetchOnboardingProgress, isOnboardingComplete } from "@/features/onboarding/api";
 import { getErrorMessage } from "@/src/lib/api/errors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -111,12 +112,24 @@ export function MfaVerifyForm() {
     inputRefs.current[targetIdx]?.focus();
   };
 
-  const handleSuccessRedirect = (res: any) => {
-    const needsOnboarding =
+  const handleSuccessRedirect = async (res: any) => {
+    let targetUrl = "/organization-setup";
+    const explicitlyNeedsOnboarding =
       res?.workspace_required ||
       !res?.workspaces ||
       res.workspaces.length === 0;
-    const targetUrl = needsOnboarding ? "/organization-setup" : "/dashboard";
+
+    if (!explicitlyNeedsOnboarding) {
+      try {
+        const progress = await fetchOnboardingProgress();
+        if (isOnboardingComplete(progress)) {
+          targetUrl = "/dashboard";
+        }
+      } catch {
+        targetUrl = "/organization-setup";
+      }
+    }
+
     if (typeof window !== "undefined") {
       window.location.href = targetUrl;
     } else {
@@ -131,7 +144,7 @@ export function MfaVerifyForm() {
         challenge_token: data.challenge_token,
         code: data.code,
       });
-      handleSuccessRedirect(res);
+      await handleSuccessRedirect(res);
     } catch (err) {
       setServerError(getErrorMessage(err));
     }
@@ -153,7 +166,7 @@ export function MfaVerifyForm() {
         code: cleanCode,
         recovery_code: cleanCode,
       });
-      handleSuccessRedirect(res);
+      await handleSuccessRedirect(res);
     } catch (err) {
       setServerError(getErrorMessage(err));
     }
