@@ -42,6 +42,23 @@ export function StepMarketingCompliance({
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (initialData && Object.keys(initialData).length > 0) {
+      setFormData((prev) => ({
+        ...prev,
+        ...initialData,
+        marketing_enabled: initialData.marketing_enabled ?? prev.marketing_enabled,
+        customer_opt_in_required: initialData.customer_opt_in_required ?? prev.customer_opt_in_required,
+        opt_in_method: initialData.opt_in_method || prev.opt_in_method,
+        privacy_policy_url: initialData.privacy_policy_url ?? prev.privacy_policy_url,
+        unsubscribe_enabled: initialData.unsubscribe_enabled ?? prev.unsubscribe_enabled,
+        unsubscribe_keyword: initialData.unsubscribe_keyword || prev.unsubscribe_keyword,
+        default_language: initialData.default_language || prev.default_language,
+        default_country_code: initialData.default_country_code || prev.default_country_code,
+      }));
+    }
+  }, [initialData]);
+
   const completeMutation = useCompleteMarketingComplianceMutation();
 
   const handleInputChange = (field: keyof MarketingComplianceData, value: any) => {

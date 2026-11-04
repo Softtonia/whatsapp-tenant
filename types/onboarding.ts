@@ -4,9 +4,36 @@ export type { Industry, TenantDocument };
 export type OnboardingStepKey =
   | "tenant_registration"
   | "business_information"
+  | "business_documents"
   | "subscription_plan"
+  | "meta_business_connection"
+  | "waba_setup"
   | "marketing_compliance"
   | "final_activation";
+
+export interface ServerOnboardingStep {
+  step_key: string;
+  step_title: string;
+  step_order: number;
+  description?: string;
+  is_required: boolean;
+  is_enabled: boolean;
+  is_completed: boolean;
+  status: "completed" | "in_progress" | "not_started" | string;
+  completed_at?: string | null;
+  last_saved_at?: string | null;
+  form_data?: any;
+  validation_errors?: any;
+  requirements?: string[];
+  metadata?: {
+    missing_types?: string[];
+    documents_uploaded?: number;
+    verification_status?: string;
+    plan_code?: string | null;
+    plan_name?: string | null;
+    [key: string]: any;
+  } | any[];
+}
 
 export interface TenantRegistrationData {
   name: string;

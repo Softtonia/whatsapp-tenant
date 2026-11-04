@@ -112,6 +112,22 @@ export function StepTenantRegistration({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [saveDraftFeedback, setSaveDraftFeedback] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (initialData && Object.keys(initialData).length > 0) {
+      setFormData((prev) => ({
+        ...prev,
+        ...initialData,
+        name: initialData.name || initialData.workspace_name || prev.name,
+        company_name: initialData.company_name || prev.company_name,
+        country: initialData.country || prev.country,
+        timezone: initialData.timezone || prev.timezone,
+        preferred_language: initialData.preferred_language || prev.preferred_language,
+        terms_accepted: initialData.terms_accepted ?? prev.terms_accepted,
+        subdomain: initialData.subdomain || prev.subdomain,
+      }));
+    }
+  }, [initialData]);
+
   const saveMutation = useSaveTenantRegistrationMutation();
   const completeMutation = useCompleteTenantRegistrationMutation();
 

@@ -187,41 +187,59 @@ export async function fetchOnboardingRequirements(): Promise<any> {
 export function isOnboardingComplete(progress: any): boolean {
   if (!progress) return false;
 
+  // Unwrap if nested under { success: true, data: { ... } }
+  const target =
+    progress?.data && typeof progress.data === "object" && !Array.isArray(progress.data)
+      ? progress.data
+      : progress;
+
   // 1. Explicit boolean flags
-  if (progress.is_completed === true || progress.completed === true) {
+  if (target.is_completed === true || target.completed === true) {
     return true;
   }
 
-  // 2. Completed / Active status
-  if (typeof progress.status === "string") {
-    const s = progress.status.toLowerCase();
-    if (s === "completed" || s === "active") {
+  // 2. Status check (handles onboarding_status and status)
+  const rawStatus = target.onboarding_status || target.status;
+  if (typeof rawStatus === "string") {
+    const s = rawStatus.toLowerCase();
+    if (["completed", "active", "done", "finished"].includes(s)) {
       return true;
     }
   }
 
-  // 3. Message indicating completion
-  if (typeof progress.message === "string") {
-    const m = progress.message.toLowerCase();
+  // 3. Progress percentage check (handles percentage and progress_percentage)
+  const pct = target.percentage ?? target.progress_percentage;
+  if (typeof pct === "number" && pct >= 100) {
+    return true;
+  }
+
+  // 4. Message indicating completion
+  if (typeof target.message === "string") {
+    const m = target.message.toLowerCase();
     if (m.includes("already completed") || m.includes("onboarding completed")) {
       return true;
     }
   }
 
-  // 4. Current step marked as completed / done
-  if (typeof progress.current_step === "string") {
-    const cs = progress.current_step.toLowerCase();
-    if (["completed", "done", "finished", "active"].includes(cs)) {
+  // 5. Current step marked as completed / done / dashboard
+  if (typeof target.current_step === "string") {
+    const cs = target.current_step.toLowerCase();
+    if (["completed", "done", "finished", "active", "dashboard"].includes(cs)) {
       return true;
     }
   }
 
-  // 5. Progress percentage check
-  if (typeof progress.progress_percentage === "number" && progress.progress_percentage >= 100) {
+  // 6. Check numeric completed_steps vs total_steps
+  if (
+    typeof target.completed_steps === "number" &&
+    typeof target.total_steps === "number" &&
+    target.total_steps > 0 &&
+    target.completed_steps >= target.total_steps
+  ) {
     return true;
   }
 
-  // 6. Check if all 5 required steps are listed in completed_steps
+  // 7. Check if required steps are in completed_steps array
   const requiredSteps = [
     "tenant_registration",
     "business_information",
@@ -230,9 +248,10 @@ export function isOnboardingComplete(progress: any): boolean {
     "final_activation",
   ];
   if (
-    Array.isArray(progress.completed_steps) &&
-    progress.completed_steps.length >= requiredSteps.length &&
-    requiredSteps.every((step) => progress.completed_steps.includes(step))
+    Array.isArray(target.completed_steps) &&
+    (target.completed_steps.includes("final_activation") ||
+      (target.completed_steps.length >= requiredSteps.length &&
+        requiredSteps.every((step) => target.completed_steps.includes(step))))
   ) {
     return true;
   }

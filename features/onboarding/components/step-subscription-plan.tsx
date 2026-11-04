@@ -121,12 +121,17 @@ export function StepSubscriptionPlan({
   const [paymentVerified, setPaymentVerified] = useState(false);
   const [verifiedPaymentId, setVerifiedPaymentId] = useState<string | null>(null);
 
-  // Sync if current subscription becomes available
+  // Sync if current subscription or initialData becomes available
   useEffect(() => {
-    if (currentSubscription?.plan?.id && !initialData.subscription_plan_id) {
+    if (initialData.subscription_plan_id) {
+      setSelectedPlanId(initialData.subscription_plan_id);
+    } else if (currentSubscription?.plan?.id) {
       setSelectedPlanId(currentSubscription.plan.id);
     }
-  }, [currentSubscription, initialData.subscription_plan_id]);
+    if (initialData.billing_cycle) {
+      setBillingCycle(initialData.billing_cycle as "monthly" | "yearly");
+    }
+  }, [currentSubscription, initialData.subscription_plan_id, initialData.billing_cycle]);
 
   const handleSelectPlan = (planId: number | string) => {
     setSelectedPlanId(planId);

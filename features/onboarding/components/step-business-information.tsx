@@ -40,6 +40,7 @@ import {
 } from "../hooks";
 import { useTenantStore } from "@/lib/tenant/store";
 import { useAuthStore } from "@/lib/auth/store";
+import { apiClient } from "@/src/lib/api/client";
 import { getErrorMessage } from "@/src/lib/api/errors";
 import type { BusinessInformationData, Industry, TenantDocument } from "@/types/onboarding";
 import { COMMON_COUNTRIES } from "./step-tenant-registration";
@@ -122,6 +123,15 @@ export function StepBusinessInformation({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [saveDraftFeedback, setSaveDraftFeedback] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialData && Object.keys(initialData).length > 0) {
+      setFormData((prev) => ({
+        ...prev,
+        ...initialData,
+      }));
+    }
+  }, [initialData]);
 
   const activeTenant = useTenantStore((s) => s.activeTenant);
   const user = useAuthStore((s) => s.user);
@@ -384,6 +394,20 @@ export function StepBusinessInformation({
       return;
     }
 
+    const regDoc = tenantDocuments.find(
+      (d) => d.document_type === "business_registration" || d.type === "business_registration"
+    );
+    const taxDoc = tenantDocuments.find(
+      (d) => d.document_type === "tax_id" || d.type === "tax_id"
+    );
+
+    if (!regDoc || !taxDoc) {
+      setErrorMessage(
+        "Both Business Registration Certificate and Tax ID document are required. Please upload both before continuing."
+      );
+      return;
+    }
+
     try {
       setErrorMessage(null);
 
@@ -399,6 +423,13 @@ export function StepBusinessInformation({
       }
 
       await completeMutation.mutateAsync(payload);
+
+      try {
+        await apiClient.post("/api/onboarding/steps/business_documents/complete", {});
+      } catch {
+        // Backend may complete automatically
+      }
+
       onNext(formData);
     } catch (err) {
       setErrorMessage(getErrorMessage(err));

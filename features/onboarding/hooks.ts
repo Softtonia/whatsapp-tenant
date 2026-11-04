@@ -112,6 +112,11 @@ export function useUploadTenantDocumentMutation() {
         document_type: variables.document_type || "logo",
         tenantId: variables.tenantId,
       }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tenant", "documents"] });
+      queryClient.invalidateQueries({ queryKey: onboardingKeys.steps() });
+      queryClient.invalidateQueries({ queryKey: onboardingKeys.progress() });
+    },
   });
 }
 
@@ -174,8 +179,13 @@ export function useReplaceTenantDocumentMutation() {
       }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
+        queryKey: ["tenant", "documents"],
+      });
+      queryClient.invalidateQueries({
         queryKey: ["tenant", "documents", variables.documentId],
       });
+      queryClient.invalidateQueries({ queryKey: onboardingKeys.steps() });
+      queryClient.invalidateQueries({ queryKey: onboardingKeys.progress() });
     },
   });
 }
@@ -190,11 +200,17 @@ export function useDownloadTenantDocumentMutation() {
 }
 
 export function useDeleteTenantDocumentMutation() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (variables: {
       documentId: string | number;
       tenantId?: string | number;
     }) => deleteTenantDocument(variables.documentId, variables.tenantId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tenant", "documents"] });
+      queryClient.invalidateQueries({ queryKey: onboardingKeys.steps() });
+      queryClient.invalidateQueries({ queryKey: onboardingKeys.progress() });
+    },
   });
 }
 
@@ -204,6 +220,7 @@ export function useSaveTenantRegistrationMutation() {
     mutationFn: (data: TenantRegistrationData) => saveTenantRegistration(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: onboardingKeys.progress() });
+      queryClient.invalidateQueries({ queryKey: onboardingKeys.steps() });
     },
   });
 }
@@ -214,6 +231,7 @@ export function useCompleteTenantRegistrationMutation() {
     mutationFn: (data?: TenantRegistrationData) => completeTenantRegistration(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: onboardingKeys.progress() });
+      queryClient.invalidateQueries({ queryKey: onboardingKeys.steps() });
     },
   });
 }
@@ -224,6 +242,7 @@ export function useSaveBusinessInfoMutation() {
     mutationFn: (data: Partial<BusinessInformationData> | FormData) => saveBusinessInformation(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: onboardingKeys.progress() });
+      queryClient.invalidateQueries({ queryKey: onboardingKeys.steps() });
     },
   });
 }
@@ -237,6 +256,7 @@ export function useCompleteBusinessInfoMutation() {
     mutationFn: (data: BusinessInformationData | FormData) => completeBusinessInformation(data),
     onSuccess: (res: any) => {
       queryClient.invalidateQueries({ queryKey: onboardingKeys.progress() });
+      queryClient.invalidateQueries({ queryKey: onboardingKeys.steps() });
       if (activeTenant && res?.business_information?.business_display_name) {
         setActiveTenant({
           ...activeTenant,
@@ -253,6 +273,7 @@ export function useCompleteSubscriptionPlanMutation() {
     mutationFn: (data: SubscriptionPlanData) => completeSubscriptionPlan(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: onboardingKeys.progress() });
+      queryClient.invalidateQueries({ queryKey: onboardingKeys.steps() });
     },
   });
 }
@@ -263,6 +284,7 @@ export function useCompleteMarketingComplianceMutation() {
     mutationFn: (data: MarketingComplianceData) => completeMarketingCompliance(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: onboardingKeys.progress() });
+      queryClient.invalidateQueries({ queryKey: onboardingKeys.steps() });
     },
   });
 }
@@ -273,6 +295,7 @@ export function useCompleteFinalActivationMutation() {
     mutationFn: (data?: FinalActivationData) => completeFinalActivation(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: onboardingKeys.progress() });
+      queryClient.invalidateQueries({ queryKey: onboardingKeys.steps() });
     },
   });
 }
@@ -284,6 +307,7 @@ export function useSubmitOnboardingMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: onboardingKeys.progress() });
       queryClient.invalidateQueries({ queryKey: onboardingKeys.overview() });
+      queryClient.invalidateQueries({ queryKey: onboardingKeys.steps() });
     },
   });
 }

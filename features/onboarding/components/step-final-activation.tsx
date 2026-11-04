@@ -14,6 +14,8 @@ import {
   Loader2,
   FileText,
   ExternalLink,
+  AlertTriangle,
+  ArrowUpRight,
 } from "lucide-react";
 import {
   useCompleteFinalActivationMutation,
@@ -28,11 +30,19 @@ import type {
   MarketingComplianceData,
 } from "@/types/onboarding";
 
+export interface IncompleteRequirement {
+  stepId: number;
+  title: string;
+  description: string;
+}
+
 interface StepFinalActivationProps {
   tenantData: TenantRegistrationData;
   businessData: Partial<BusinessInformationData>;
   planData: Partial<SubscriptionPlanData>;
   complianceData: Partial<MarketingComplianceData>;
+  incompleteRequirements?: IncompleteRequirement[];
+  onNavigateStep?: (stepId: number) => void;
   onBack: () => void;
 }
 
@@ -41,6 +51,8 @@ export function StepFinalActivation({
   businessData,
   planData,
   complianceData,
+  incompleteRequirements = [],
+  onNavigateStep,
   onBack,
 }: StepFinalActivationProps) {
   const [acceptedTerms, setAcceptedTerms] = useState(true);
@@ -50,8 +62,18 @@ export function StepFinalActivation({
   const submitMutation = useSubmitOnboardingMutation();
   const setActiveTenant = useTenantStore((s) => s.setActiveTenant);
 
+  const hasIncompleteSteps = incompleteRequirements.length > 0;
+
   const handleLaunch = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (hasIncompleteSteps) {
+      setErrorMessage(
+        "Cannot activate workspace: All required onboarding steps and documents must be completed first."
+      );
+      return;
+    }
+
     if (!acceptedTerms) {
       setErrorMessage("Please accept the Terms of Service to activate your workspace.");
       return;
@@ -75,11 +97,6 @@ export function StepFinalActivation({
         };
 
       setActiveTenant(activeTenantData);
-
-      // Clear persisted onboarding draft upon successful activation
-      try {
-        localStorage.removeItem("whatsapp_crm_onboarding_wizard_v1");
-      } catch {}
 
       // Navigate straight to dashboard
       if (typeof window !== "undefined") {
@@ -156,16 +173,53 @@ export function StepFinalActivation({
         </div>
       </div>
 
-      {/* Ready Banner */}
-      <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-900 dark:text-emerald-200 space-y-2">
-        <div className="flex items-center gap-2 text-xs font-bold">
-          <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
-          <span>All Requirements Satisfied</span>
+      {/* Status Banner */}
+      {hasIncompleteSteps ? (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 space-y-3">
+          <div className="flex items-center gap-2 text-xs font-bold text-amber-800 dark:text-amber-300">
+            <AlertTriangle className="size-4 text-amber-600 dark:text-amber-400 shrink-0" />
+            <span>Onboarding Incomplete: Missing Required Information</span>
+          </div>
+          <p className="text-[11px] leading-relaxed text-amber-800/90 dark:text-amber-300/90">
+            Your workspace cannot be activated yet because required onboarding information or verification documents are pending. Please complete the following items:
+          </p>
+          <div className="space-y-2 pt-1">
+            {incompleteRequirements.map((req, idx) => (
+              <div
+                key={idx}
+                className="flex items-center justify-between p-2.5 rounded-xl bg-background/80 border border-amber-500/20 text-xs"
+              >
+                <div className="min-w-0 pr-2">
+                  <p className="font-semibold text-foreground text-[11px]">{req.title}</p>
+                  <p className="text-[10px] text-muted-foreground">{req.description}</p>
+                </div>
+                {onNavigateStep && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="xs"
+                    onClick={() => onNavigateStep(req.stepId)}
+                    className="shrink-0 text-[10px] h-7 gap-1 border-amber-500/30 hover:bg-amber-500/10"
+                  >
+                    <span>Complete</span>
+                    <ArrowUpRight className="size-3" />
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
-        <p className="text-[11px] leading-relaxed text-emerald-800/80 dark:text-emerald-300/80">
-          Your multi-tenant workspace credentials, database partitions, and WhatsApp messaging routing will be provisioned immediately upon submission.
-        </p>
-      </div>
+      ) : (
+        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-900 dark:text-emerald-200 space-y-2">
+          <div className="flex items-center gap-2 text-xs font-bold">
+            <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
+            <span>All Requirements Satisfied</span>
+          </div>
+          <p className="text-[11px] leading-relaxed text-emerald-800/80 dark:text-emerald-300/80">
+            Your multi-tenant workspace credentials, database partitions, and WhatsApp messaging routing will be provisioned immediately upon submission.
+          </p>
+        </div>
+      )}
 
       {/* Accept Terms Checkbox */}
       <div className="flex items-start gap-3 p-3.5 rounded-xl border border-border/80 bg-card">
@@ -209,8 +263,12 @@ export function StepFinalActivation({
         <Button
           type="submit"
           size="sm"
-          disabled={isPending || !acceptedTerms}
-          className="gap-2 font-bold text-xs shadow-md bg-emerald-600 hover:bg-emerald-700 text-white"
+          disabled={isPending || !acceptedTerms || hasIncompleteSteps}
+          className={`gap-2 font-bold text-xs shadow-md text-white ${
+            hasIncompleteSteps
+              ? "bg-muted-foreground/50 cursor-not-allowed"
+              : "bg-emerald-600 hover:bg-emerald-700"
+          }`}
         >
           {isPending ? (
             <>
@@ -220,7 +278,7 @@ export function StepFinalActivation({
           ) : (
             <>
               <Rocket className="size-4" />
-              Activate &amp; Launch Workspace
+              {hasIncompleteSteps ? "Complete Required Steps First" : "Activate & Launch Workspace"}
             </>
           )}
         </Button>
