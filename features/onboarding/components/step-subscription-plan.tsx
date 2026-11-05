@@ -28,13 +28,15 @@ import {
 import { loadRazorpayCheckoutScript } from "@/features/billing/api";
 import { useAuthStore } from "@/lib/auth/store";
 import { getErrorMessage } from "@/src/lib/api/errors";
-import type { SubscriptionPlanData } from "@/types/onboarding";
+import type { SubscriptionPlanData, ServerOnboardingStep } from "@/types/onboarding";
 
 interface StepSubscriptionPlanProps {
   initialData: Partial<SubscriptionPlanData>;
   onNext: (data: SubscriptionPlanData) => void;
   onBack: () => void;
   onChange?: (data: Partial<SubscriptionPlanData>) => void;
+  isCompleted?: boolean;
+  stepData?: ServerOnboardingStep;
 }
 
 const FALLBACK_PLANS = [
@@ -98,6 +100,8 @@ export function StepSubscriptionPlan({
   onNext,
   onBack,
   onChange,
+  isCompleted = false,
+  stepData,
 }: StepSubscriptionPlanProps) {
   const user = useAuthStore((s) => s.user);
 
@@ -107,12 +111,44 @@ export function StepSubscriptionPlan({
   // Step 8: Fetch current tenant subscription (GET /api/tenant/subscription)
   const { data: currentSubscription, refetch: refetchSubscription } = useTenantSubscriptionQuery();
 
+  // Resolve step data from /api/onboarding/steps
+  const stepFormData =
+    stepData?.form_data && typeof stepData.form_data === "object" && !Array.isArray(stepData.form_data)
+      ? stepData.form_data
+      : null;
+
+  const stepMetadata =
+    stepData?.metadata && typeof stepData.metadata === "object" && !Array.isArray(stepData.metadata)
+      ? stepData.metadata
+      : null;
+
+  const isServerStepCompleted = Boolean(
+    isCompleted || stepData?.is_completed || stepData?.status === "completed"
+  );
+
+  const activePlanId =
+    stepFormData?.subscription_plan_id ||
+    initialData.subscription_plan_id ||
+    currentSubscription?.plan?.id;
+
+  const activeBillingCycle: "monthly" | "yearly" =
+    stepFormData?.billing_cycle === "yearly" ||
+    initialData.billing_cycle === "yearly" ||
+    currentSubscription?.billing_cycle === "yearly"
+      ? "yearly"
+      : "monthly";
+
+  const isSubscriptionActive = Boolean(
+    (isServerStepCompleted && activePlanId) ||
+    (currentSubscription?.status === "active" && currentSubscription?.plan)
+  );
+
   const [selectedPlanId, setSelectedPlanId] = useState<number | string>(
-    initialData.subscription_plan_id || currentSubscription?.plan?.id || 1
+    activePlanId || 1
   );
 
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">(
-    (initialData.billing_cycle as "monthly" | "yearly") || "monthly"
+    activeBillingCycle || "monthly"
   );
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -121,17 +157,15 @@ export function StepSubscriptionPlan({
   const [paymentVerified, setPaymentVerified] = useState(false);
   const [verifiedPaymentId, setVerifiedPaymentId] = useState<string | null>(null);
 
-  // Sync if current subscription or initialData becomes available
+  // Sync if active subscription or initialData becomes available
   useEffect(() => {
-    if (initialData.subscription_plan_id) {
-      setSelectedPlanId(initialData.subscription_plan_id);
-    } else if (currentSubscription?.plan?.id) {
-      setSelectedPlanId(currentSubscription.plan.id);
+    if (activePlanId) {
+      setSelectedPlanId(activePlanId);
     }
-    if (initialData.billing_cycle) {
-      setBillingCycle(initialData.billing_cycle as "monthly" | "yearly");
+    if (activeBillingCycle) {
+      setBillingCycle(activeBillingCycle);
     }
-  }, [currentSubscription, initialData.subscription_plan_id, initialData.billing_cycle]);
+  }, [activePlanId, activeBillingCycle]);
 
   const handleSelectPlan = (planId: number | string) => {
     setSelectedPlanId(planId);
@@ -250,6 +284,16 @@ export function StepSubscriptionPlan({
   const selectedPlan = plans.find((p) => String(p.id) === String(selectedPlanId)) || plans[0];
   const activePrice = billingCycle === "monthly" ? selectedPlan.priceMonthly : selectedPlan.priceYearly;
   const currencySymbol = selectedPlan.currency === "INR" ? "₹" : "$";
+
+  const isSelectedPlanTheActiveOne = Boolean(
+    isSubscriptionActive && String(selectedPlan.id) === String(activePlanId)
+  );
+
+  const activePlanName =
+    stepMetadata?.plan_name ||
+    currentSubscription?.plan?.name ||
+    plans.find((p) => String(p.id) === String(activePlanId))?.name ||
+    "Starter";
 
   // Step 3, 4, 5, 6, 8: Complete Razorpay Checkout Execution
   const handleProceedWithRazorpay = async () => {
@@ -421,6 +465,43 @@ export function StepSubscriptionPlan({
 
   return (
     <div className="space-y-6">
+      {/* Active Subscription Banner from Server Data */}
+      {isSubscriptionActive && (
+        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-950 dark:text-emerald-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5 sm:mt-0">
+              <CheckCircle2 className="size-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-bold">Active Subscription Verified</h4>
+                <Badge className="bg-emerald-600 text-white hover:bg-emerald-600 text-[10px] uppercase font-mono px-2 py-0.5">
+                  Active
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Your workspace already has an active{" "}
+                <strong className="text-foreground">{activePlanName}</strong> subscription ({activeBillingCycle} billing). You do not need to pay again.
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() =>
+              onNext({
+                subscription_plan_id: Number(activePlanId) || 1,
+                billing_cycle: activeBillingCycle,
+              })
+            }
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs gap-1.5 shrink-0 w-full sm:w-auto"
+          >
+            <span>Continue with Active Plan</span>
+            <ArrowRight className="size-3.5" />
+          </Button>
+        </div>
+      )}
+
       {/* Error Banner */}
       {errorMessage && (
         <div className="p-3 text-xs bg-destructive/10 text-destructive border border-destructive/20 rounded-xl flex items-start gap-2">
@@ -499,6 +580,7 @@ export function StepSubscriptionPlan({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {plans.map((plan) => {
           const isSelected = String(selectedPlanId) === String(plan.id);
+          const isThisPlanActive = Boolean(isSubscriptionActive && String(plan.id) === String(activePlanId));
           const price = billingCycle === "monthly" ? plan.priceMonthly : plan.priceYearly;
 
           return (
@@ -506,24 +588,37 @@ export function StepSubscriptionPlan({
               key={plan.id}
               onClick={() => handleSelectPlan(plan.id)}
               className={`relative flex flex-col justify-between rounded-2xl border p-4 cursor-pointer transition-all ${
-                isSelected
+                isThisPlanActive
+                  ? "border-emerald-500 bg-emerald-500/5 shadow-md ring-2 ring-emerald-500/20"
+                  : isSelected
                   ? "border-primary bg-primary/5 shadow-md ring-2 ring-primary/20"
                   : "border-border/80 bg-card hover:border-border hover:shadow-xs"
               }`}
             >
-              {plan.popular && (
+              {isThisPlanActive ? (
+                <div className="absolute -top-2.5 right-4 flex items-center gap-1">
+                  <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white text-[10px] font-bold px-2.5 py-0.5 flex items-center gap-1 shadow-xs">
+                    <CheckCircle2 className="size-3" />
+                    Active Plan
+                  </Badge>
+                </div>
+              ) : plan.popular ? (
                 <div className="absolute -top-2.5 right-4">
                   <Badge className="bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5">
                     Recommended
                   </Badge>
                 </div>
-              )}
+              ) : null}
 
               <div className="space-y-3">
                 <div className="space-y-1">
                   <h4 className="text-sm font-bold text-foreground flex items-center justify-between">
                     <span>{plan.name}</span>
-                    {isSelected && <Check className="size-4 text-primary" />}
+                    {isThisPlanActive ? (
+                      <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
+                    ) : isSelected ? (
+                      <Check className="size-4 text-primary" />
+                    ) : null}
                   </h4>
                   <p className="text-[11px] text-muted-foreground leading-snug">
                     {plan.description}
@@ -550,12 +645,14 @@ export function StepSubscriptionPlan({
               <div className="pt-4 mt-3 border-t border-border/40">
                 <Button
                   type="button"
-                  variant={isSelected ? "default" : "outline"}
+                  variant={isThisPlanActive ? "default" : isSelected ? "default" : "outline"}
                   size="xs"
-                  className="w-full text-xs font-semibold"
+                  className={`w-full text-xs font-semibold ${
+                    isThisPlanActive ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""
+                  }`}
                   onClick={() => handleSelectPlan(plan.id)}
                 >
-                  {isSelected ? "Selected Tier" : "Choose Tier"}
+                  {isThisPlanActive ? "Current Active Plan" : isSelected ? "Selected Tier" : "Choose Tier"}
                 </Button>
               </div>
             </div>
@@ -571,6 +668,12 @@ export function StepSubscriptionPlan({
             <h4 className="text-xs font-bold text-foreground">
               Selected Plan Specifications: <span className="text-primary">{selectedPlan.name}</span>
             </h4>
+            {isSelectedPlanTheActiveOne && (
+              <Badge className="bg-emerald-600/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1">
+                <CheckCircle2 className="size-3 text-emerald-600" />
+                Active Plan
+              </Badge>
+            )}
           </div>
           {loadingPlanDetail ? (
             <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
@@ -639,7 +742,14 @@ export function StepSubscriptionPlan({
             Payment Gateway: <strong className="text-foreground">Razorpay Secure Checkout</strong> (UPI, Cards, NetBanking)
           </span>
           <span className="font-bold text-foreground">
-            Total Due: {currencySymbol}{activePrice} {billingCycle === "yearly" ? "/ year" : "/ month"}
+            {isSelectedPlanTheActiveOne && billingCycle === activeBillingCycle ? (
+              <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                <CheckCircle2 className="size-3.5" />
+                Active Subscription (No Payment Due)
+              </span>
+            ) : (
+              <>Total Due: {currencySymbol}{activePrice} {billingCycle === "yearly" ? "/ year" : "/ month"}</>
+            )}
           </span>
         </div>
       </div>
@@ -659,39 +769,83 @@ export function StepSubscriptionPlan({
         </Button>
 
         <div className="flex items-center gap-2">
-          {/* Fallback trial button if user is testing in development without Razorpay test keys */}
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={handleProceedWithoutPayment}
-            disabled={isPending}
-            className="text-xs text-muted-foreground hover:text-foreground"
-          >
-            Skip Payment (Sandbox Trial)
-          </Button>
+          {isSelectedPlanTheActiveOne ? (
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => {
+                onNext({
+                  subscription_plan_id: Number(selectedPlan.id) || 1,
+                  billing_cycle: billingCycle,
+                });
+              }}
+              disabled={isPending}
+              className="gap-2 font-bold text-xs shadow-md bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              <CheckCircle2 className="size-3.5" />
+              Continue with Active Plan
+              <ArrowRight className="size-3.5" />
+            </Button>
+          ) : (
+            <>
+              {isSubscriptionActive && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedPlanId(activePlanId);
+                    setBillingCycle(activeBillingCycle);
+                    onNext({
+                      subscription_plan_id: Number(activePlanId) || 1,
+                      billing_cycle: activeBillingCycle,
+                    });
+                  }}
+                  disabled={isPending}
+                  className="text-xs gap-1.5 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/10"
+                >
+                  <CheckCircle2 className="size-3.5" />
+                  Keep Active ({activePlanName}) &amp; Continue
+                </Button>
+              )}
 
-          {/* Primary Step 4 + 5 + 6 Trigger: Open Razorpay Checkout */}
-          <Button
-            type="button"
-            size="sm"
-            onClick={handleProceedWithRazorpay}
-            disabled={isPending}
-            className="gap-2 font-bold text-xs shadow-md bg-primary hover:bg-primary/90 text-primary-foreground"
-          >
-            {isPending ? (
-              <>
-                <Loader2 className="size-3.5 animate-spin" />
-                {checkoutFeedback || "Processing Payment..."}
-              </>
-            ) : (
-              <>
-                <CreditCard className="size-3.5" />
-                Pay {currencySymbol}{activePrice} with Razorpay &amp; Continue
-                <ArrowRight className="size-3.5" />
-              </>
-            )}
-          </Button>
+              {/* Fallback trial button if user is testing in development without Razorpay test keys */}
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleProceedWithoutPayment}
+                disabled={isPending}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                Skip Payment (Sandbox Trial)
+              </Button>
+
+              {/* Primary Step 4 + 5 + 6 Trigger: Open Razorpay Checkout */}
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleProceedWithRazorpay}
+                disabled={isPending}
+                className="gap-2 font-bold text-xs shadow-md bg-primary hover:bg-primary/90 text-primary-foreground"
+              >
+                {isPending ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin" />
+                    {checkoutFeedback || "Processing Payment..."}
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="size-3.5" />
+                    {isSubscriptionActive
+                      ? `Upgrade to ${selectedPlan.name} (${currencySymbol}${activePrice})`
+                      : `Pay ${currencySymbol}${activePrice} with Razorpay & Continue`}
+                    <ArrowRight className="size-3.5" />
+                  </>
+                )}
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </div>

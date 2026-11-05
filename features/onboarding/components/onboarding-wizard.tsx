@@ -489,7 +489,7 @@ export function OnboardingWizard() {
         <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-2 px-2 border-t border-border/40 max-w-xl mx-auto">
           <span className="flex items-center gap-1.5">
             <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            Server synced (/api/onboarding/steps) {lastSyncText ? `at ${lastSyncText}` : ""}
+            Server synced {lastSyncText ? `at ${lastSyncText}` : ""}
           </span>
           <button
             type="button"
@@ -532,6 +532,8 @@ export function OnboardingWizard() {
         {currentStep === 3 && (
           <StepSubscriptionPlan
             initialData={planData}
+            isCompleted={stepStatus.isStep3Done}
+            stepData={stepsList.find((s) => s.step_key === "subscription_plan")}
             onChange={handlePlanChange}
             onNext={(data) => {
               setPlanData(data);

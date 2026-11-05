@@ -765,7 +765,7 @@ export function StepBusinessInformation({
                 Business Verification Documents
               </h3>
               <p className="text-[11px] text-muted-foreground">
-                Upload your Business Registration Certificate and Tax ID document to complete WhatsApp verification via <code className="text-[10px] font-mono">/api/tenant/business-documents</code>.
+                Upload your Business Registration Certificate and Tax ID document to complete WhatsApp verification.
               </p>
             </div>
           </div>
