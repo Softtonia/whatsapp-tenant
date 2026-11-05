@@ -101,7 +101,7 @@ function AcceptInvitationFormContent() {
             onClick={() => router.push("/dashboard")}
             className="w-full font-semibold gap-2"
           >
-            <span>Proceed to Workspace</span>
+            <span>Proceed to Onboarding</span>
             <ArrowRight className="size-4" />
           </Button>
         </CardFooter>

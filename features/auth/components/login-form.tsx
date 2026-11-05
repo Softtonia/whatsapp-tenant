@@ -146,22 +146,6 @@ export function LoginForm() {
               <p className="text-xs text-destructive">{errors.password.message}</p>
             )}
           </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-              <Building2 className="size-3.5 text-muted-foreground" />
-              Tenant / Workspace ID
-            </label>
-            <Input
-              type="text"
-              placeholder="1"
-              {...register("tenantId")}
-              disabled={isSubmitting || loginMutation.isPending}
-            />
-            <p className="text-[11px] text-muted-foreground">
-              Optional: Identifies your company or branch ID (defaults to 1).
-            </p>
-          </div>
         </CardContent>
 
         <CardFooter className="flex flex-col gap-3 pt-2">
@@ -180,15 +164,7 @@ export function LoginForm() {
             )}
           </Button>
 
-          <div className="flex items-center justify-between w-full pt-2 border-t border-border/50 text-xs">
-            <span className="text-muted-foreground">Need a new workspace?</span>
-            <Link
-              href="/organization-setup"
-              className="text-primary hover:underline font-medium"
-            >
-              Set up organization
-            </Link>
-          </div>
+        
 
           <p className="text-center text-[11px] text-muted-foreground">
             Protected with multi-tenant isolation and TLS encryption.

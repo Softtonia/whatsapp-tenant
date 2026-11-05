@@ -509,19 +509,12 @@ export function StepBusinessDocuments({
           <label className="text-xs font-medium text-foreground">
             4. Expiry date (optional)
           </label>
-          <div className="relative">
-            <Calendar className="size-4 text-muted-foreground absolute left-3 top-3 pointer-events-none" />
+          <div>
             <Input
               type="date"
-              placeholder="dd-mm-yyyy"
               value={expiryDate}
               onChange={(e) => setExpiryDate(e.target.value)}
-              onClick={(e) => {
-                try {
-                  (e.target as any).showPicker?.();
-                } catch {}
-              }}
-              className="text-xs h-10 rounded-xl pl-9 cursor-pointer"
+              className="text-xs h-10 rounded-xl cursor-pointer"
             />
           </div>
         </div>
@@ -530,20 +523,16 @@ export function StepBusinessDocuments({
         <Button
           type="button"
           onClick={handleUploadDocument}
-          disabled={!selectedFile || uploadDocMutation.isPending}
-          className={`w-full h-10 font-bold text-xs transition-colors shadow-xs ${
-            !selectedFile || uploadDocMutation.isPending
-              ? "bg-muted text-muted-foreground border border-border/80 cursor-not-allowed opacity-90"
-              : "bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 cursor-pointer"
-          }`}
+          disabled={uploadDocMutation.isPending}
+          className="w-full h-11 rounded-xl font-bold text-sm bg-zinc-950 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-100 shadow-md transition-all cursor-pointer"
         >
           {uploadDocMutation.isPending ? (
             <>
-              <Loader2 className="size-3.5 animate-spin mr-2" />
-              Uploading Document...
+              <Loader2 className="size-4 animate-spin mr-2" />
+              <span>Uploading Document...</span>
             </>
           ) : (
-            "Upload Document"
+            <span>Upload Document</span>
           )}
         </Button>
       </div>
