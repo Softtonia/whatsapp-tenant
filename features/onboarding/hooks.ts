@@ -31,6 +31,7 @@ import {
 } from "./api";
 import type { TenantDocument } from "@/types/onboarding";
 import { useTenantStore } from "@/lib/tenant/store";
+import { useAuthStore } from "@/lib/auth/store";
 import type {
   TenantRegistrationData,
   BusinessInformationData,
@@ -227,11 +228,30 @@ export function useSaveTenantRegistrationMutation() {
 
 export function useCompleteTenantRegistrationMutation() {
   const queryClient = useQueryClient();
+  const setActiveTenant = useTenantStore((s) => s.setActiveTenant);
+  const updateUser = useAuthStore((s) => s.updateUser);
+
   return useMutation({
     mutationFn: (data?: TenantRegistrationData) => completeTenantRegistration(data),
-    onSuccess: () => {
+    onSuccess: (res: any) => {
       queryClient.invalidateQueries({ queryKey: onboardingKeys.progress() });
       queryClient.invalidateQueries({ queryKey: onboardingKeys.steps() });
+
+      const newTenantId =
+        res?.tenant_id ||
+        res?.tenant?.id ||
+        res?.workspace?.id ||
+        res?.data?.tenant_id ||
+        res?.data?.id;
+
+      if (newTenantId) {
+        setActiveTenant({
+          id: newTenantId,
+          name: res?.tenant?.name || res?.workspace?.name || "Workspace",
+          status: "active",
+        });
+        updateUser({ tenant_id: newTenantId });
+      }
     },
   });
 }

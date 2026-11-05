@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { setTenantIdGetter } from "@/src/lib/api/client";
+import { useAuthStore } from "@/lib/auth/store";
 import type { Tenant } from "@/types/tenant";
 
 export interface TenantWithDetails extends Tenant {
@@ -48,16 +49,31 @@ export const useTenantStore = create<TenantStore>()(
 setTenantIdGetter(() => {
   const activeTenant = useTenantStore.getState().activeTenant;
   if (activeTenant?.id) return activeTenant.id;
+
+  const user = useAuthStore.getState().user;
+  if (user?.tenant_id) return user.tenant_id;
+
   if (typeof window !== "undefined") {
     try {
       const stored = localStorage.getItem("whatsapp-tenant-storage");
       if (stored) {
         const parsed = JSON.parse(stored);
-        return parsed?.state?.activeTenant?.id || null;
+        if (parsed?.state?.activeTenant?.id) return parsed.state.activeTenant.id;
+      }
+    } catch {
+      // ignore
+    }
+
+    try {
+      const authStored = localStorage.getItem("whatsapp-auth-storage");
+      if (authStored) {
+        const parsedAuth = JSON.parse(authStored);
+        if (parsedAuth?.state?.user?.tenant_id) return parsedAuth.state.user.tenant_id;
       }
     } catch {
       // ignore
     }
   }
+
   return null;
 });

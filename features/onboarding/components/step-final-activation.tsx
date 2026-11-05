@@ -22,6 +22,7 @@ import {
   useSubmitOnboardingMutation,
 } from "../hooks";
 import { useTenantStore } from "@/lib/tenant/store";
+import { useAuthStore } from "@/lib/auth/store";
 import { getErrorMessage } from "@/src/lib/api/errors";
 import type {
   TenantRegistrationData,
@@ -91,12 +92,15 @@ export function StepFinalActivation({
       const activeTenantData =
         submitRes?.workspace ||
         submitRes?.tenant || {
-          id: submitRes?.tenant_id || 1,
+          id: submitRes?.tenant_id || (submitRes as any)?.data?.tenant_id,
           name: businessData.business_display_name || tenantData.workspace_name || "Workspace",
           status: "active",
         };
 
-      setActiveTenant(activeTenantData);
+      if (activeTenantData?.id) {
+        setActiveTenant(activeTenantData);
+        useAuthStore.getState().updateUser({ tenant_id: activeTenantData.id });
+      }
 
       // Navigate straight to dashboard
       if (typeof window !== "undefined") {

@@ -116,7 +116,7 @@ function AcceptInvitationFormContent() {
           <UserCheck className="size-6" />
         </div>
         <CardTitle className="text-xl font-bold tracking-tight">
-          Accept Team Invitation
+          Accept Invitation
         </CardTitle>
         <CardDescription className="text-xs">
           Set up your team member profile and credentials to join your organization&apos;s workspace.

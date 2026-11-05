@@ -13,6 +13,8 @@ import {
   useOnboardingProgressQuery,
   isOnboardingComplete,
 } from "../hooks";
+import { useTenantStore } from "@/lib/tenant/store";
+import { useAuthStore } from "@/lib/auth/store";
 import {
   Check,
   Building2,
@@ -185,6 +187,26 @@ export function OnboardingWizard() {
         default_language: fd.default_language ?? prev.default_language,
         default_country_code: fd.default_country_code ?? prev.default_country_code,
       }));
+    }
+
+    // Synchronize tenant_id if present in server step data
+    const detectedTenantId =
+      stepsList.find((s) => s.form_data?.tenant_id)?.form_data?.tenant_id ||
+      stepsList.find((s) => s.step_key === "marketing_compliance")?.form_data?.tenant_id;
+
+    if (detectedTenantId) {
+      const activeTenant = useTenantStore.getState().activeTenant;
+      if (!activeTenant?.id) {
+        useTenantStore.getState().setActiveTenant({
+          id: detectedTenantId,
+          name: tenantStep?.form_data?.tenant_name || "Workspace",
+          status: "active",
+        });
+      }
+      const user = useAuthStore.getState().user;
+      if (!user?.tenant_id) {
+        useAuthStore.getState().updateUser({ tenant_id: detectedTenantId });
+      }
     }
   }, [stepsList]);
 

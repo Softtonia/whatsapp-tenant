@@ -135,7 +135,7 @@ export function StepBusinessInformation({
 
   const activeTenant = useTenantStore((s) => s.activeTenant);
   const user = useAuthStore((s) => s.user);
-  const tenantId = activeTenant?.id || user?.tenant_id || 1;
+  const tenantId = activeTenant?.id || user?.tenant_id || undefined;
 
   const { data: industriesData, isLoading: isIndustriesLoading } = useTenantIndustriesQuery(tenantId);
   const industries =
@@ -154,7 +154,7 @@ export function StepBusinessInformation({
   const documentId = uploadedDocument?.id;
   const { data: documentStatusData } = useTenantDocumentStatusQuery(documentId, tenantId);
 
-  // Business Documents State (uploaded via POST /api/tenant/documents)
+  // Business Documents State (uploaded via POST /api/tenant/business-documents)
   const [tenantDocuments, setTenantDocuments] = useState<TenantDocument[]>([]);
 
   // Sync server documents if already uploaded
@@ -765,7 +765,7 @@ export function StepBusinessInformation({
                 Business Verification Documents
               </h3>
               <p className="text-[11px] text-muted-foreground">
-                Upload your Business Registration Certificate and Tax ID document to complete WhatsApp verification via <code className="text-[10px] font-mono">/api/tenant/documents</code>.
+                Upload your Business Registration Certificate and Tax ID document to complete WhatsApp verification via <code className="text-[10px] font-mono">/api/tenant/business-documents</code>.
               </p>
             </div>
           </div>

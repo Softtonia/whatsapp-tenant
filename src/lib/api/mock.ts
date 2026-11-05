@@ -1751,7 +1751,7 @@ export function getMockResponse<T>(path: string, method = "GET", body?: any): Ap
     };
   }
 
-  if (normalized === "/api/tenant/documents" && method === "POST") {
+  if ((normalized === "/api/tenant/documents" || normalized === "/api/tenant/business-documents") && method === "POST") {
     return {
       success: true,
       message: "Document uploaded successfully",
@@ -1768,7 +1768,7 @@ export function getMockResponse<T>(path: string, method = "GET", body?: any): Ap
     };
   }
 
-  if (normalized === "/api/tenant/documents" && method === "GET") {
+  if ((normalized === "/api/tenant/documents" || normalized === "/api/tenant/business-documents") && method === "GET") {
     return {
       success: true,
       message: "Tenant documents retrieved successfully",
@@ -1776,7 +1776,7 @@ export function getMockResponse<T>(path: string, method = "GET", body?: any): Ap
     };
   }
 
-  const docMatch = normalized.match(/^\/api\/tenant\/documents\/([^/]+)(?:\/(replace|status|download))?$/);
+  const docMatch = normalized.match(/^\/api\/tenant\/(?:documents|business-documents)\/([^/]+)(?:\/(replace|status|download))?$/);
   if (docMatch) {
     const documentId = docMatch[1];
     const action = docMatch[2];
