@@ -394,20 +394,6 @@ export function StepBusinessInformation({
       return;
     }
 
-    const regDoc = tenantDocuments.find(
-      (d) => d.document_type === "business_registration" || d.type === "business_registration"
-    );
-    const taxDoc = tenantDocuments.find(
-      (d) => d.document_type === "tax_id" || d.type === "tax_id"
-    );
-
-    if (!regDoc || !taxDoc) {
-      setErrorMessage(
-        "Both Business Registration Certificate and Tax ID document are required. Please upload both before continuing."
-      );
-      return;
-    }
-
     try {
       setErrorMessage(null);
 
@@ -593,6 +579,7 @@ export function StepBusinessInformation({
               type="tel"
               inputMode="tel"
               autoComplete="tel"
+              maxLength={16}
               value={formData.business_phone}
               onChange={(e) => handlePhoneChange(e.target.value)}
               onBlur={() => validatePhone(formData.business_phone)}
@@ -755,274 +742,8 @@ export function StepBusinessInformation({
         </div>
       </div>
 
-      {/* Section 3: Business Verification Documents */}
-      <div className="space-y-4">
-        <div className="border-b border-border/60 pb-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-                <FileText className="size-4 text-primary" />
-                Business Verification Documents
-              </h3>
-              <p className="text-[11px] text-muted-foreground">
-                Upload your Business Registration Certificate and Tax ID document to complete WhatsApp verification.
-              </p>
-            </div>
-          </div>
-        </div>
 
-        {/* Feedback message for document actions */}
-        {docFeedback && (
-          <div
-            className={`p-2.5 text-xs rounded-xl border flex items-center gap-2 ${
-              docFeedback.type === "success"
-                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20"
-                : "bg-destructive/10 text-destructive border-destructive/20"
-            }`}
-          >
-            {docFeedback.type === "success" ? (
-              <CheckCircle2 className="size-3.5 shrink-0" />
-            ) : (
-              <AlertCircle className="size-3.5 shrink-0" />
-            )}
-            <span>{docFeedback.text}</span>
-          </div>
-        )}
-
-        {/* Two Dedicated Document Upload Fields */}
-        {(() => {
-          const regDoc = tenantDocuments.find(
-            (d) => d.document_type === "business_registration" || d.type === "business_registration"
-          );
-          const taxDoc = tenantDocuments.find(
-            (d) => d.document_type === "tax_id" || d.type === "tax_id"
-          );
-
-          return (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Field 1: Business Registration Certificate */}
-              <div className="rounded-2xl border border-border/80 bg-card p-4 space-y-3 flex flex-col justify-between">
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                      <Building2 className="size-3.5 text-primary" />
-                      Business Registration *
-                    </Label>
-                    {regDoc ? (
-                      <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-semibold gap-1">
-                        <CheckCircle2 className="size-3" />
-                        Uploaded
-                      </Badge>
-                    ) : (
-                      <span className="text-[10px] text-amber-600 font-medium">Required</span>
-                    )}
-                  </div>
-                  <p className="text-[11px] text-muted-foreground leading-snug">
-                    Incorporation Certificate or registered trade license.
-                  </p>
-                </div>
-
-                {regDoc ? (
-                  <div className="p-3 rounded-xl border border-border/70 bg-muted/30 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <FileText className="size-4 text-primary shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-xs font-medium text-foreground truncate max-w-[140px] sm:max-w-[170px]" title={regDoc.name || regDoc.file_name}>
-                          {regDoc.name || regDoc.file_name || "Business Registration"}
-                        </p>
-                        {regDoc.file_size && (
-                          <p className="text-[10px] text-muted-foreground">
-                            {(regDoc.file_size / 1024).toFixed(0)} KB
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="xs"
-                        onClick={() => handleDownloadDoc(regDoc)}
-                        className="text-[11px] h-7 px-1.5 text-muted-foreground hover:text-foreground"
-                        title="Download"
-                      >
-                        <Download className="size-3" />
-                      </Button>
-                      <label className="cursor-pointer">
-                        <input
-                          type="file"
-                          accept=".pdf,image/png,image/jpeg"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) handleUploadSpecificDoc(file, "business_registration");
-                          }}
-                        />
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline px-1.5 py-1">
-                          <RefreshCw className="size-3" />
-                          Replace
-                        </span>
-                      </label>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="xs"
-                        onClick={() => regDoc.id && handleDeleteDoc(regDoc.id)}
-                        className="text-[11px] text-destructive hover:bg-destructive/10 h-7 px-1.5"
-                        title="Delete"
-                      >
-                        <Trash2 className="size-3" />
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <Input
-                      type="file"
-                      accept=".pdf,image/png,image/jpeg"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) setRegFile(file);
-                      }}
-                      className="text-xs h-9 cursor-pointer file:cursor-pointer file:text-xs file:font-medium"
-                    />
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => regFile && handleUploadSpecificDoc(regFile, "business_registration")}
-                      disabled={!regFile || uploadingDocType === "business_registration"}
-                      className="w-full text-xs gap-1.5 h-8 font-medium"
-                    >
-                      {uploadingDocType === "business_registration" ? (
-                        <>
-                          <Loader2 className="size-3.5 animate-spin" />
-                          <span>Uploading Certificate...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="size-3.5" />
-                          <span>Upload Business Registration</span>
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              {/* Field 2: Tax ID Certificate */}
-              <div className="rounded-2xl border border-border/80 bg-card p-4 space-y-3 flex flex-col justify-between">
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                      <FileCheck className="size-3.5 text-primary" />
-                      Tax ID / EIN Certificate *
-                    </Label>
-                    {taxDoc ? (
-                      <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-semibold gap-1">
-                        <CheckCircle2 className="size-3" />
-                        Uploaded
-                      </Badge>
-                    ) : (
-                      <span className="text-[10px] text-amber-600 font-medium">Required</span>
-                    )}
-                  </div>
-                  <p className="text-[11px] text-muted-foreground leading-snug">
-                    Tax Identification, EIN, VAT, or GSTIN certificate.
-                  </p>
-                </div>
-
-                {taxDoc ? (
-                  <div className="p-3 rounded-xl border border-border/70 bg-muted/30 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <FileText className="size-4 text-primary shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-xs font-medium text-foreground truncate max-w-[140px] sm:max-w-[170px]" title={taxDoc.name || taxDoc.file_name}>
-                          {taxDoc.name || taxDoc.file_name || "Tax ID Document"}
-                        </p>
-                        {taxDoc.file_size && (
-                          <p className="text-[10px] text-muted-foreground">
-                            {(taxDoc.file_size / 1024).toFixed(0)} KB
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="xs"
-                        onClick={() => handleDownloadDoc(taxDoc)}
-                        className="text-[11px] h-7 px-1.5 text-muted-foreground hover:text-foreground"
-                        title="Download"
-                      >
-                        <Download className="size-3" />
-                      </Button>
-                      <label className="cursor-pointer">
-                        <input
-                          type="file"
-                          accept=".pdf,image/png,image/jpeg"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) handleUploadSpecificDoc(file, "tax_id");
-                          }}
-                        />
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline px-1.5 py-1">
-                          <RefreshCw className="size-3" />
-                          Replace
-                        </span>
-                      </label>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="xs"
-                        onClick={() => taxDoc.id && handleDeleteDoc(taxDoc.id)}
-                        className="text-[11px] text-destructive hover:bg-destructive/10 h-7 px-1.5"
-                        title="Delete"
-                      >
-                        <Trash2 className="size-3" />
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <Input
-                      type="file"
-                      accept=".pdf,image/png,image/jpeg"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) setTaxFile(file);
-                      }}
-                      className="text-xs h-9 cursor-pointer file:cursor-pointer file:text-xs file:font-medium"
-                    />
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => taxFile && handleUploadSpecificDoc(taxFile, "tax_id")}
-                      disabled={!taxFile || uploadingDocType === "tax_id"}
-                      className="w-full text-xs gap-1.5 h-8 font-medium"
-                    >
-                      {uploadingDocType === "tax_id" ? (
-                        <>
-                          <Loader2 className="size-3.5 animate-spin" />
-                          <span>Uploading Tax ID...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="size-3.5" />
-                          <span>Upload Tax ID Certificate</span>
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })()}
-      </div>
-
-      {/* Section 4: Registered Physical Address */}
+      {/* Section 3: Registered Physical Address */}
       <div className="space-y-4">
         <div className="border-b border-border/60 pb-2">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
@@ -1153,7 +874,7 @@ export function StepBusinessInformation({
               </>
             ) : (
               <>
-                Continue to Subscription Plan
+                Continue to Business Documents
                 <ArrowRight className="size-3.5" />
               </>
             )}

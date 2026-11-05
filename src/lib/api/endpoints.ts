@@ -31,6 +31,8 @@ export const API_ENDPOINTS = {
     TENANT_REGISTRATION_COMPLETE: "/api/onboarding/steps/tenant_registration/complete",
     BUSINESS_INFO_SAVE: "/api/onboarding/steps/business_information/save",
     BUSINESS_INFO_COMPLETE: "/api/onboarding/steps/business_information/complete",
+    BUSINESS_DOCUMENTS_SAVE: "/api/onboarding/steps/business_documents/save",
+    BUSINESS_DOCUMENTS_COMPLETE: "/api/onboarding/steps/business_documents/complete",
     SUBSCRIPTION_PLAN_COMPLETE: "/api/onboarding/steps/subscription_plan/complete",
     MARKETING_COMPLIANCE_COMPLETE: "/api/onboarding/steps/marketing_compliance/complete",
     FINAL_ACTIVATION_COMPLETE: "/api/onboarding/steps/final_activation/complete",

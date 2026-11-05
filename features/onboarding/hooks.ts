@@ -8,6 +8,7 @@ import {
   completeTenantRegistration,
   saveBusinessInformation,
   completeBusinessInformation,
+  completeBusinessDocuments,
   completeSubscriptionPlan,
   completeMarketingCompliance,
   completeFinalActivation,
@@ -107,10 +108,18 @@ export function useUploadTenantDocumentMutation() {
     mutationFn: (variables: {
       file: File | FormData;
       document_type?: string;
+      document_number?: string;
+      expiry_date?: string;
+      name?: string;
+      title?: string;
       tenantId?: string | number;
     }) =>
       uploadTenantDocument(variables.file, {
-        document_type: variables.document_type || "logo",
+        document_type: variables.document_type || "other",
+        document_number: variables.document_number,
+        expiry_date: variables.expiry_date,
+        name: variables.name,
+        title: variables.title,
         tenantId: variables.tenantId,
       }),
     onSuccess: () => {
@@ -283,6 +292,18 @@ export function useCompleteBusinessInfoMutation() {
           name: res.business_information.business_display_name,
         });
       }
+    },
+  });
+}
+
+export function useCompleteBusinessDocumentsMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data?: any) => completeBusinessDocuments(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: onboardingKeys.progress() });
+      queryClient.invalidateQueries({ queryKey: onboardingKeys.steps() });
+      queryClient.invalidateQueries({ queryKey: ["tenant", "documents"] });
     },
   });
 }

@@ -27,6 +27,8 @@ export async function uploadTenantDocument(
     type?: string;
     name?: string;
     title?: string;
+    document_number?: string;
+    expiry_date?: string;
     tenantId?: string | number;
   }
 ): Promise<any> {
@@ -38,11 +40,17 @@ export async function uploadTenantDocument(
     formData = new FormData();
     formData.append("file", fileOrFormData);
     formData.append("document", fileOrFormData);
-    const docType = metadata?.document_type || metadata?.type || "logo";
+    const docType = metadata?.document_type || metadata?.type || "other";
     formData.append("document_type", docType);
     formData.append("type", docType);
     formData.append("name", metadata?.name || fileOrFormData.name);
     formData.append("title", metadata?.title || metadata?.name || fileOrFormData.name);
+    if (metadata?.document_number) {
+      formData.append("document_number", metadata.document_number);
+    }
+    if (metadata?.expiry_date) {
+      formData.append("expiry_date", metadata.expiry_date);
+    }
   } else {
     formData = new FormData();
     formData.append("file", fileOrFormData as any);
@@ -293,6 +301,15 @@ export async function completeBusinessInformation(
   const response: any = await apiClient.post<any>(
     API_ENDPOINTS.ONBOARDING.BUSINESS_INFO_COMPLETE,
     data
+  );
+  return response?.data || response;
+}
+
+// 3. Step: Business Documents
+export async function completeBusinessDocuments(data?: any): Promise<any> {
+  const response: any = await apiClient.post<any>(
+    API_ENDPOINTS.ONBOARDING.BUSINESS_DOCUMENTS_COMPLETE,
+    data || {}
   );
   return response?.data || response;
 }

@@ -216,11 +216,18 @@ function AcceptInvitationFormContent() {
             <Input
               type="tel"
               placeholder="+1234567890"
+              maxLength={16}
               {...register("phone_number")}
+              onChange={(e) => {
+                const val = e.target.value.replace(/(?!^\+)[^\d\s\-()]/g, "");
+                setValue("phone_number", val, { shouldValidate: true });
+              }}
+              className={errors.phone_number ? "border-destructive focus-visible:ring-destructive" : ""}
             />
             {errors.phone_number && (
-              <p className="text-[11px] text-destructive">
-                {errors.phone_number.message}
+              <p className="text-[11px] text-destructive flex items-center gap-1">
+                <AlertCircle className="size-3 shrink-0" />
+                <span>{errors.phone_number.message}</span>
               </p>
             )}
           </div>

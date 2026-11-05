@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { StepTenantRegistration } from "./step-tenant-registration";
 import { StepBusinessInformation } from "./step-business-information";
+import { StepBusinessDocuments } from "./step-business-documents";
 import { StepSubscriptionPlan } from "./step-subscription-plan";
 import { StepMarketingCompliance } from "./step-marketing-compliance";
 import { StepFinalActivation } from "./step-final-activation";
@@ -18,6 +19,7 @@ import { useAuthStore } from "@/lib/auth/store";
 import {
   Check,
   Building2,
+  Building,
   FileText,
   CreditCard,
   ShieldCheck,
@@ -36,10 +38,11 @@ import type { IncompleteRequirement } from "./step-final-activation";
 
 const ONBOARDING_STEPS = [
   { id: 1, key: "tenant_registration", title: "Tenant", icon: Building2 },
-  { id: 2, key: "business_information", title: "Business Info", icon: FileText },
-  { id: 3, key: "subscription_plan", title: "Plan", icon: CreditCard },
-  { id: 4, key: "marketing_compliance", title: "Compliance", icon: ShieldCheck },
-  { id: 5, key: "final_activation", title: "Activation", icon: Rocket },
+  { id: 2, key: "business_information", title: "Business Info", icon: Building },
+  { id: 3, key: "business_documents", title: "Documents", icon: FileText },
+  { id: 4, key: "subscription_plan", title: "Plan", icon: CreditCard },
+  { id: 5, key: "marketing_compliance", title: "Compliance", icon: ShieldCheck },
+  { id: 6, key: "final_activation", title: "Activation", icon: Rocket },
 ];
 
 const DEFAULT_TENANT_DATA: TenantRegistrationData = {
@@ -220,12 +223,11 @@ export function OnboardingWizard() {
     const activationStep = stepsList.find((s) => s.step_key === "final_activation");
 
     const isStep1Done = Boolean(tenantStep?.is_completed || tenantStep?.status === "completed");
-    const isStep2BusinessDone = Boolean(businessStep?.is_completed || businessStep?.status === "completed");
-    const isStep2DocsDone = docsStep ? Boolean(docsStep.is_completed || docsStep.status === "completed") : true;
-    const isStep2Done = isStep2BusinessDone && isStep2DocsDone;
-    const isStep3Done = Boolean(planStep?.is_completed || planStep?.status === "completed");
-    const isStep4Done = Boolean(complianceStep?.is_completed || complianceStep?.status === "completed");
-    const isStep5Done = Boolean(activationStep?.is_completed || activationStep?.status === "completed");
+    const isStep2Done = Boolean(businessStep?.is_completed || businessStep?.status === "completed");
+    const isStep3Done = docsStep ? Boolean(docsStep.is_completed || docsStep.status === "completed") : false;
+    const isStep4Done = Boolean(planStep?.is_completed || planStep?.status === "completed");
+    const isStep5Done = Boolean(complianceStep?.is_completed || complianceStep?.status === "completed");
+    const isStep6Done = Boolean(activationStep?.is_completed || activationStep?.status === "completed");
 
     // Compute first incomplete required step
     let firstIncomplete = 1;
@@ -237,11 +239,13 @@ export function OnboardingWizard() {
       firstIncomplete = 3;
     } else if (!isStep4Done) {
       firstIncomplete = 4;
-    } else {
+    } else if (!isStep5Done) {
       firstIncomplete = 5;
+    } else {
+      firstIncomplete = 6;
     }
 
-    // Build detailed missing requirements for Step 5
+    // Build detailed missing requirements for Step 6
     const incompleteRequirements: IncompleteRequirement[] = [];
     if (!isStep1Done) {
       incompleteRequirements.push({
@@ -250,46 +254,42 @@ export function OnboardingWizard() {
         description: "Primary workspace name and legal company identification are incomplete.",
       });
     }
-    if (!isStep2BusinessDone) {
+    if (!isStep2Done) {
       incompleteRequirements.push({
         stepId: 2,
         title: "Step 2: Business Profile Information",
         description: "Legal entity name, business phone, and address are incomplete.",
       });
     }
-    if (!isStep2DocsDone) {
-      const reqList = Array.isArray(docsStep?.requirements) && docsStep.requirements.length > 0
-        ? docsStep.requirements.join(", ")
-        : "business_registration, tax_id";
-      incompleteRequirements.push({
-        stepId: 2,
-        title: "Step 2: Business Verification Documents",
-        description: `Required verification documents (${reqList}) are missing or pending review.`,
-      });
-    }
     if (!isStep3Done) {
       incompleteRequirements.push({
         stepId: 3,
-        title: "Step 3: Subscription Plan Selection",
-        description: "Subscription tier and quota selection are incomplete.",
+        title: "Step 3: Business Verification Documents",
+        description: "At least 2 valid business documents are required for organization verification.",
       });
     }
     if (!isStep4Done) {
       incompleteRequirements.push({
         stepId: 4,
-        title: "Step 4: Meta Marketing & Messaging Compliance",
+        title: "Step 4: Subscription Plan Selection",
+        description: "Subscription tier and quota selection are incomplete.",
+      });
+    }
+    if (!isStep5Done) {
+      incompleteRequirements.push({
+        stepId: 5,
+        title: "Step 5: Meta Marketing & Messaging Compliance",
         description: "Customer opt-in policy and unsubscribe keyword configuration are incomplete.",
       });
     }
 
     return {
       isStep1Done,
-      isStep2BusinessDone,
-      isStep2DocsDone,
       isStep2Done,
       isStep3Done,
       isStep4Done,
       isStep5Done,
+      isStep6Done,
       firstIncomplete,
       incompleteRequirements,
     };
@@ -303,6 +303,7 @@ export function OnboardingWizard() {
       if (stepId === 3) return stepStatus.isStep1Done && stepStatus.isStep2Done;
       if (stepId === 4) return stepStatus.isStep1Done && stepStatus.isStep2Done && stepStatus.isStep3Done;
       if (stepId === 5) return stepStatus.isStep1Done && stepStatus.isStep2Done && stepStatus.isStep3Done && stepStatus.isStep4Done;
+      if (stepId === 6) return stepStatus.isStep1Done && stepStatus.isStep2Done && stepStatus.isStep3Done && stepStatus.isStep4Done && stepStatus.isStep5Done;
       return false;
     },
     [stepStatus]
@@ -310,10 +311,10 @@ export function OnboardingWizard() {
 
   // 4. Redirect to dashboard immediately if onboarding is complete
   useEffect(() => {
-    if (isOnboardingComplete(progressData) || stepStatus.isStep5Done) {
+    if (isOnboardingComplete(progressData) || stepStatus.isStep6Done) {
       router.replace("/dashboard");
     }
-  }, [progressData, stepStatus.isStep5Done, router]);
+  }, [progressData, stepStatus.isStep6Done, router]);
 
   // 5. Initial Step Position Placement from Server Data
   useEffect(() => {
@@ -329,7 +330,7 @@ export function OnboardingWizard() {
       if (typeof window !== "undefined") {
         const urlParams = new URLSearchParams(window.location.search);
         const urlStep = parseInt(urlParams.get("step") || "", 10);
-        if (urlStep >= 1 && urlStep <= 5 && isStepUnlocked(urlStep)) {
+        if (urlStep >= 1 && urlStep <= 6 && isStepUnlocked(urlStep)) {
           setCurrentStep(urlStep);
           setHasInitializedStep(true);
           return;
@@ -413,7 +414,9 @@ export function OnboardingWizard() {
                 ? stepStatus.isStep3Done
                 : s.id === 4
                 ? stepStatus.isStep4Done
-                : stepStatus.isStep5Done;
+                : s.id === 5
+                ? stepStatus.isStep5Done
+                : stepStatus.isStep6Done;
 
             const isCurrent = currentStep === s.id;
             const isUnlocked = isStepUnlocked(s.id);
@@ -472,16 +475,18 @@ export function OnboardingWizard() {
           <CardTitle className="text-xl font-bold tracking-tight text-foreground">
             {currentStep === 1 && "Step 1: Workspace & Tenant Registration"}
             {currentStep === 2 && "Step 2: Business & Legal Entity Profile"}
-            {currentStep === 3 && "Step 3: Select Your Subscription Tier"}
-            {currentStep === 4 && "Step 4: Meta Marketing & Messaging Compliance"}
-            {currentStep === 5 && "Step 5: Final Review & Workspace Activation"}
+            {currentStep === 3 && "Step 3: Business Verification Documents"}
+            {currentStep === 4 && "Step 4: Select Your Subscription Tier"}
+            {currentStep === 5 && "Step 5: Meta Marketing & Messaging Compliance"}
+            {currentStep === 6 && "Step 6: Final Review & Workspace Activation"}
           </CardTitle>
           <CardDescription className="text-xs text-muted-foreground mt-0.5">
             {currentStep === 1 && "Set your primary workspace name and organizational slug"}
-            {currentStep === 2 && "Provide legal registration and upload verification documents"}
-            {currentStep === 3 && "Choose conversation quota and agent seats for your team"}
-            {currentStep === 4 && "Configure customer opt-in consent and automated unsubscribe handling"}
-            {currentStep === 5 && "Review your configuration and launch your multi-tenant environment"}
+            {currentStep === 2 && "Provide your legal business profile and operating address"}
+            {currentStep === 3 && "Upload any 2 valid business or identity proof documents to verify your organization"}
+            {currentStep === 4 && "Choose conversation quota and agent seats for your team"}
+            {currentStep === 5 && "Configure customer opt-in consent and automated unsubscribe handling"}
+            {currentStep === 6 && "Review your configuration and launch your multi-tenant environment"}
           </CardDescription>
         </div>
 
@@ -530,13 +535,10 @@ export function OnboardingWizard() {
         )}
 
         {currentStep === 3 && (
-          <StepSubscriptionPlan
-            initialData={planData}
+          <StepBusinessDocuments
             isCompleted={stepStatus.isStep3Done}
-            stepData={stepsList.find((s) => s.step_key === "subscription_plan")}
-            onChange={handlePlanChange}
-            onNext={(data) => {
-              setPlanData(data);
+            stepData={stepsList.find((s) => s.step_key === "business_documents")}
+            onNext={() => {
               refetchSteps();
               setCurrentStep(4);
             }}
@@ -545,11 +547,13 @@ export function OnboardingWizard() {
         )}
 
         {currentStep === 4 && (
-          <StepMarketingCompliance
-            initialData={complianceData}
-            onChange={handleComplianceChange}
+          <StepSubscriptionPlan
+            initialData={planData}
+            isCompleted={stepStatus.isStep4Done}
+            stepData={stepsList.find((s) => s.step_key === "subscription_plan")}
+            onChange={handlePlanChange}
             onNext={(data) => {
-              setComplianceData(data);
+              setPlanData(data);
               refetchSteps();
               setCurrentStep(5);
             }}
@@ -558,6 +562,19 @@ export function OnboardingWizard() {
         )}
 
         {currentStep === 5 && (
+          <StepMarketingCompliance
+            initialData={complianceData}
+            onChange={handleComplianceChange}
+            onNext={(data) => {
+              setComplianceData(data);
+              refetchSteps();
+              setCurrentStep(6);
+            }}
+            onBack={() => setCurrentStep(4)}
+          />
+        )}
+
+        {currentStep === 6 && (
           <StepFinalActivation
             tenantData={tenantData}
             businessData={businessData}
@@ -565,7 +582,7 @@ export function OnboardingWizard() {
             complianceData={complianceData}
             incompleteRequirements={stepStatus.incompleteRequirements}
             onNavigateStep={handleNavigateStep}
-            onBack={() => setCurrentStep(4)}
+            onBack={() => setCurrentStep(5)}
           />
         )}
       </CardContent>

@@ -57,7 +57,18 @@ export const acceptInvitationSchema = z
       .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
       .regex(/[0-9!@#$%^&*]/, "Password must contain at least one number or symbol"),
     password_confirmation: z.string().min(1, "Please confirm your password"),
-    phone_number: z.string().min(1, "Phone number is required"),
+    phone_number: z
+      .string()
+      .min(1, "Phone number is required")
+      .refine(
+        (val) => {
+          const cleaned = val.replace(/[\s\-()]/g, "");
+          return /^\+?[1-9]\d{6,14}$/.test(cleaned);
+        },
+        {
+          message: "Please enter a valid phone number (7 to 15 digits, e.g. +1234567890)",
+        }
+      ),
   })
   .refine((data) => data.password === data.password_confirmation, {
     message: "Passwords do not match",
