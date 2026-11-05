@@ -1,6 +1,7 @@
 "use client";
 
 import { DashboardHeader } from "./dashboard-header";
+import { PendingRequirementsBanner } from "./pending-requirements-banner";
 import { WhatsAppStatusBanner } from "./whatsapp-status-banner";
 import { KpiGrid } from "./kpi-grid";
 import { ConversationActivityChart } from "./conversation-activity-chart";
@@ -25,6 +26,9 @@ export function DashboardOverview() {
       {/* 1. Greeting & Active Workspace Context */}
       <DashboardHeader />
 
+      {/* 2. Onboarding Requirements Banner (Meta Connection & WABA Setup) */}
+      <PendingRequirementsBanner />
+
       {hasNoWorkspaces && (
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200">
           <div className="flex items-center gap-3">
@@ -43,13 +47,13 @@ export function DashboardOverview() {
         </div>
       )}
 
-      {/* 2. WhatsApp Connection Health Banner */}
+      {/* 3. WhatsApp Connection Health Banner */}
       <WhatsAppStatusBanner />
 
-      {/* 3. High-level KPI Cards Grid */}
+      {/* 4. High-level KPI Cards Grid */}
       <KpiGrid />
 
-      {/* 4. Responsive Grid: Activity, Chats, Campaigns & Subscription */}
+      {/* 5. Responsive Grid: Activity, Chats, Campaigns & Subscription */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column (2 Cols on Desktop) */}
         <div className="lg:col-span-2 space-y-6 min-w-0">

@@ -510,14 +510,19 @@ export function StepBusinessDocuments({
             4. Expiry date (optional)
           </label>
           <div className="relative">
+            <Calendar className="size-4 text-muted-foreground absolute left-3 top-3 pointer-events-none" />
             <Input
               type="date"
-              placeholder="Select expiry date"
+              placeholder="dd-mm-yyyy"
               value={expiryDate}
               onChange={(e) => setExpiryDate(e.target.value)}
-              className="text-xs h-10 rounded-xl pr-9 cursor-pointer"
+              onClick={(e) => {
+                try {
+                  (e.target as any).showPicker?.();
+                } catch {}
+              }}
+              className="text-xs h-10 rounded-xl pl-9 cursor-pointer"
             />
-            <Calendar className="size-4 text-muted-foreground absolute right-3 top-3 pointer-events-none" />
           </div>
         </div>
 
@@ -526,7 +531,11 @@ export function StepBusinessDocuments({
           type="button"
           onClick={handleUploadDocument}
           disabled={!selectedFile || uploadDocMutation.isPending}
-          className="w-full h-10 font-bold text-xs bg-zinc-950 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 shadow-sm"
+          className={`w-full h-10 font-bold text-xs transition-colors shadow-xs ${
+            !selectedFile || uploadDocMutation.isPending
+              ? "bg-muted text-muted-foreground border border-border/80 cursor-not-allowed opacity-90"
+              : "bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 cursor-pointer"
+          }`}
         >
           {uploadDocMutation.isPending ? (
             <>

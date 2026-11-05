@@ -21,12 +21,18 @@ import {
   ShieldCheck,
   Lock,
   Sparkles,
+  KeyRound,
+  CheckCircle2,
+  RefreshCw,
+  Loader2,
 } from "lucide-react";
 import { directConnectSchema, type DirectConnectFormData } from "../schemas";
 import {
   useConnectWhatsAppMutation,
   useEmbeddedSignupConfigQuery,
-  useInitiateEmbeddedSignupMutation,
+  useExchangeMetaTokenMutation,
+  useReconnectMetaMutation,
+  useInitiateMetaConnectMutation,
 } from "../hooks";
 
 interface ConnectAccountModalProps {
@@ -64,8 +70,14 @@ function ConnectAccountInnerForm({
 }) {
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [embeddedNotice, setEmbeddedNotice] = React.useState<string | null>(null);
+  const [authUrl, setAuthUrl] = React.useState<string | null>(null);
+  const [authCode, setAuthCode] = React.useState("");
+  const [stateParam, setStateParam] = React.useState("");
+
   const connectMutation = useConnectWhatsAppMutation();
-  const initiateEmbeddedMutation = useInitiateEmbeddedSignupMutation();
+  const metaConnectMutation = useInitiateMetaConnectMutation();
+  const exchangeTokenMutation = useExchangeMetaTokenMutation();
+  const reconnectMutation = useReconnectMetaMutation();
   const { data: embeddedConfig } = useEmbeddedSignupConfigQuery();
 
   const {
@@ -99,12 +111,44 @@ function ConnectAccountInnerForm({
   const handleLaunchEmbeddedSignup = async () => {
     try {
       setErrorMessage(null);
-      const session = await initiateEmbeddedMutation.mutateAsync();
-      setEmbeddedNotice(
-        `Meta OAuth session created (Session ID: ${session.session_id}). Live popup requires the official Facebook JavaScript SDK (FB.login). Alternatively, connect instantly using permanent System User credentials under Manual Credentials.`
+      setEmbeddedNotice("Requesting Meta authorization URL from /api/tenant/meta/connect...");
+      const res = await metaConnectMutation.mutateAsync();
+      const url = res?.auth_url;
+      if (url) {
+        setAuthUrl(url);
+        if (res.state) {
+          setStateParam(res.state);
+        }
+        window.open(url, "_blank", "noopener,noreferrer");
+        setEmbeddedNotice("Meta OAuth login opened in the next tab. Log into Facebook and approve permissions, then return here.");
+      } else {
+        setErrorMessage("Meta authorization URL was not returned by server.");
+      }
+    } catch (err: unknown) {
+      setErrorMessage(
+        err instanceof Error ? err.message : "Could not connect to Meta. Check configuration."
       );
-    } catch {
-      setErrorMessage("Could not initialize Meta OAuth session. Check configuration.");
+    }
+  };
+
+  const handleExchangeToken = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!authCode.trim()) {
+      setErrorMessage("Please enter the Meta authorization code.");
+      return;
+    }
+    try {
+      setErrorMessage(null);
+      await exchangeTokenMutation.mutateAsync({
+        code: authCode.trim(),
+        state: stateParam.trim() || undefined,
+      });
+      onSuccess?.();
+      onClose();
+    } catch (err: unknown) {
+      setErrorMessage(
+        err instanceof Error ? err.message : "Failed to exchange Meta authorization token."
+      );
     }
   };
 
@@ -139,18 +183,22 @@ function ConnectAccountInnerForm({
       )}
 
       <Tabs defaultValue="embedded" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 h-9">
-          <TabsTrigger value="embedded" className="text-xs font-semibold gap-1.5">
-            <Sparkles className="size-3.5 text-primary" />
-            Meta Embedded Login
+        <TabsList className="grid w-full grid-cols-3 h-9">
+          <TabsTrigger value="embedded" className="text-[11px] font-semibold gap-1">
+            <Sparkles className="size-3 text-primary" />
+            Meta Signup
           </TabsTrigger>
-          <TabsTrigger value="manual" className="text-xs font-semibold gap-1.5">
-            <Lock className="size-3.5" />
+          <TabsTrigger value="exchange" className="text-[11px] font-semibold gap-1">
+            <KeyRound className="size-3" />
+            OAuth Token
+          </TabsTrigger>
+          <TabsTrigger value="manual" className="text-[11px] font-semibold gap-1">
+            <Lock className="size-3" />
             Manual Credentials
           </TabsTrigger>
         </TabsList>
 
-        {/* Tab 1: Embedded Signup */}
+        {/* Tab 1: Embedded Signup via /api/tenant/meta/connect */}
         <TabsContent value="embedded" className="mt-4 space-y-4">
           <div className="p-4 rounded-xl border border-border bg-card space-y-2.5">
             <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
@@ -161,28 +209,98 @@ function ConnectAccountInnerForm({
               Log into your Meta Business Manager to automatically import your verified display name, WhatsApp Business Account, and register phone numbers with zero manual token generation.
             </p>
             <div className="text-[11px] text-muted-foreground font-mono bg-muted/40 p-2 rounded-lg border border-border/60">
-              Meta App ID: {embeddedConfig?.app_id || "789123456789"} • Config: {embeddedConfig?.config_id || "cfg_default"}
+              Meta App ID: {embeddedConfig?.app_id || "1627020728900812"} • Config: {embeddedConfig?.config_id || "1683696456704799"}
             </div>
           </div>
 
           <Button
             type="button"
             onClick={handleLaunchEmbeddedSignup}
-            disabled={initiateEmbeddedMutation.isPending}
-            className="w-full h-10 gap-2 font-semibold text-xs shadow-xs"
+            disabled={metaConnectMutation.isPending}
+            className="w-full h-10 gap-2 font-semibold text-xs shadow-xs bg-blue-600 hover:bg-blue-700 text-white"
           >
-            <ExternalLink className="size-4" />
-            {initiateEmbeddedMutation.isPending
-              ? "Initializing Meta Session..."
-              : "Continue with Facebook / Meta Login"}
+            {metaConnectMutation.isPending ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                <span>Connecting to Meta...</span>
+              </>
+            ) : (
+              <>
+                <ExternalLink className="size-4" />
+                <span>Continue with Facebook / Meta Login</span>
+              </>
+            )}
           </Button>
+
+          {authUrl && (
+            <a
+              href={authUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-1.5 w-full h-9 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs"
+            >
+              <ExternalLink className="size-3.5" />
+              <span>Click here if browser blocked the new tab</span>
+            </a>
+          )}
 
           <p className="text-[11px] text-center text-muted-foreground">
             You must have Admin access to your Meta Business Portfolio.
           </p>
         </TabsContent>
 
-        {/* Tab 2: Manual Credentials Form */}
+        {/* Tab 2: Meta OAuth Token Exchange */}
+        <TabsContent value="exchange" className="mt-4">
+          <form onSubmit={handleExchangeToken} className="space-y-3.5">
+            <div className="p-3 bg-muted/20 border border-border/80 rounded-xl space-y-1 text-xs">
+              <span className="font-semibold text-foreground">Exchange OAuth Authorization Code</span>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                If completing Embedded Signup through a popup callback, paste the received code to exchange for long-lived tenant Meta access tokens.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-foreground">
+                Meta Authorization Code (code) *
+              </Label>
+              <Input
+                value={authCode}
+                onChange={(e) => setAuthCode(e.target.value)}
+                placeholder="AQB... or OAuth Code"
+                className="text-xs font-mono"
+                required
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-foreground">
+                State Token (optional)
+              </Label>
+              <Input
+                value={stateParam}
+                onChange={(e) => setStateParam(e.target.value)}
+                placeholder="State verification token"
+                className="text-xs font-mono"
+              />
+            </div>
+
+            <DialogFooter className="gap-2 sm:gap-0 pt-3">
+              <Button type="button" variant="outline" size="sm" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={exchangeTokenMutation.isPending || !authCode.trim()}
+                className="font-semibold text-xs"
+              >
+                {exchangeTokenMutation.isPending ? "Exchanging Token..." : "Exchange & Connect"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </TabsContent>
+
+        {/* Tab 3: Manual Credentials Form */}
         <TabsContent value="manual" className="mt-4">
           <form onSubmit={handleSubmit(onSubmitDirect)} className="space-y-3.5">
             <div className="space-y-1.5">

@@ -338,6 +338,15 @@ export async function completeFinalActivation(data?: FinalActivationData): Promi
     API_ENDPOINTS.ONBOARDING.FINAL_ACTIVATION_COMPLETE,
     data || {}
   );
+
+  // Hit {{base_url}}/api/onboarding/submit immediately after complete API in onboarding
+  try {
+    const submitRes = await submitOnboarding();
+    return submitRes || response?.data || response;
+  } catch (err) {
+    console.warn("Auto-hit /api/onboarding/submit after complete warning:", err);
+  }
+
   return response?.data || response;
 }
 

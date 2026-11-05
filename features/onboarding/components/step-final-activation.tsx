@@ -82,17 +82,24 @@ export function StepFinalActivation({
 
     try {
       setErrorMessage(null);
-      // 1. Complete Final Activation Step
-      await finalActivationMutation.mutateAsync({ accepted_terms: true });
+      // 1. Complete Final Activation Step (/api/onboarding/steps/final_activation/complete)
+      const completeRes = await finalActivationMutation.mutateAsync({ accepted_terms: true });
 
-      // 2. Submit Final Onboarding
-      const submitRes = await submitMutation.mutateAsync();
+      // 2. Submit Final Onboarding (/api/onboarding/submit)
+      let submitRes: any = null;
+      try {
+        submitRes = await submitMutation.mutateAsync();
+      } catch (submitErr) {
+        console.warn("Submit onboarding call after complete:", submitErr);
+      }
 
       // Update tenant store with activated workspace
       const activeTenantData =
         submitRes?.workspace ||
-        submitRes?.tenant || {
-          id: submitRes?.tenant_id || (submitRes as any)?.data?.tenant_id,
+        submitRes?.tenant ||
+        completeRes?.workspace ||
+        completeRes?.tenant || {
+          id: submitRes?.tenant_id || (submitRes as any)?.data?.tenant_id || completeRes?.tenant_id,
           name: businessData.business_display_name || tenantData.workspace_name || "Workspace",
           status: "active",
         };

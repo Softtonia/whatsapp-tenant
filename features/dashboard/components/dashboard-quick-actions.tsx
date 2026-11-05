@@ -8,10 +8,12 @@ import {
   FileText,
   Bot,
   CheckCircle2,
+  Clock,
   ChevronRight,
   Sparkles,
 } from "lucide-react";
 import Link from "next/link";
+import { useOnboardingRequirementsQuery } from "@/features/onboarding/hooks";
 
 interface QuickActionItem {
   title: string;
@@ -54,15 +56,47 @@ const QUICK_ACTIONS: QuickActionItem[] = [
   },
 ];
 
-const ONBOARDING_MILESTONES = [
-  { title: "WhatsApp Cloud API Connected", completed: true },
-  { title: "Business Profile & Timezone Configured", completed: true },
-  { title: "Meta Templates Submitted & Synced", completed: true },
-  { title: "Team Members Invited to Workspace", completed: true },
-  { title: "First Customer Broadcast Dispatched", completed: true },
+interface MilestoneItem {
+  title: string;
+  completed: boolean;
+  href?: string;
+}
+
+const DEFAULT_MILESTONES: MilestoneItem[] = [
+  { title: "Tenant Account Registration", completed: true },
+  { title: "Business Information & Legal Profile", completed: true },
+  { title: "Business Verification Documents Uploaded", completed: true },
+  { title: "Subscription Plan Configured", completed: true },
+  { title: "Marketing & WhatsApp Compliance Verified", completed: true },
+  { title: "Workspace Final Activation Completed", completed: true },
+  { title: "Meta Business Portfolio Connection", completed: false, href: "/whatsapp-connections" },
+  { title: "WhatsApp Business Account (WABA) Setup", completed: false, href: "/whatsapp-connections" },
 ];
 
 export function DashboardQuickActions() {
+  const { data: requirementsRes } = useOnboardingRequirementsQuery();
+  const reqData = requirementsRes?.data || requirementsRes;
+
+  const completionPercentage = reqData?.summary?.completion_percentage ?? 75;
+  const completedSteps = reqData?.completed_steps;
+  const pendingSteps = reqData?.pending_steps;
+
+  // Build dynamic milestone items if available from /api/onboarding/requirements
+  const milestones: MilestoneItem[] =
+    Array.isArray(completedSteps) && Array.isArray(pendingSteps)
+      ? [
+          ...completedSteps.map((s: any): MilestoneItem => ({
+            title: s.step_title || s.step_key,
+            completed: true,
+          })),
+          ...pendingSteps.map((s: any): MilestoneItem => ({
+            title: s.step_title || s.step_key,
+            completed: false,
+            href: "/whatsapp-connections",
+          })),
+        ]
+      : DEFAULT_MILESTONES;
+
   return (
     <div className="space-y-6">
       {/* Workspace Readiness / Onboarding Checklist */}
@@ -74,18 +108,41 @@ export function DashboardQuickActions() {
               <CardTitle className="text-sm font-bold">Workspace Launch Readiness</CardTitle>
             </div>
             <span className="text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full font-mono">
-              100% Ready
+              {completionPercentage}% Ready
             </span>
           </div>
         </CardHeader>
-        <CardContent className="space-y-2 pt-0">
-          {ONBOARDING_MILESTONES.map((milestone, idx) => (
+        <CardContent className="space-y-2.5 pt-0">
+          {milestones.map((milestone, idx) => (
             <div
               key={idx}
-              className="flex items-center gap-2.5 text-xs text-muted-foreground"
+              className="flex items-center justify-between gap-2 text-xs"
             >
-              <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
-              <span className="text-foreground text-[11px] font-medium">{milestone.title}</span>
+              <div className="flex items-center gap-2 min-w-0">
+                {milestone.completed ? (
+                  <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
+                ) : (
+                  <Clock className="size-3.5 text-amber-500 shrink-0" />
+                )}
+                <span
+                  className={`text-[11px] truncate ${
+                    milestone.completed
+                      ? "text-foreground font-medium"
+                      : "text-muted-foreground font-medium"
+                  }`}
+                >
+                  {milestone.title}
+                </span>
+              </div>
+
+              {!milestone.completed && milestone.href && (
+                <Link
+                  href={milestone.href}
+                  className="text-[10px] text-primary hover:underline font-semibold shrink-0"
+                >
+                  Connect
+                </Link>
+              )}
             </div>
           ))}
         </CardContent>
@@ -128,4 +185,3 @@ export function DashboardQuickActions() {
     </div>
   );
 }
-
