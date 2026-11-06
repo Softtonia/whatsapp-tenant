@@ -160,30 +160,35 @@ export async function connectWhatsAppAccount(
 }
 
 export async function fetchEmbeddedSignupConfig(): Promise<EmbeddedSignupConfig> {
-  const res = await apiClient.get<EmbeddedSignupConfig>(
+  const res = await apiClient.get<any>(
     API_ENDPOINTS.WHATSAPP.EMBEDDED_CONFIG
   );
-  return res.data;
+  const data = res?.data ?? res;
+  return (data?.data ?? data) as EmbeddedSignupConfig;
 }
 
 export async function initiateEmbeddedSignup(): Promise<{
-  session_id: string;
+  session_id?: string;
   state: string;
+  [key: string]: any;
 }> {
-  const res = await apiClient.post<{ session_id: string; state: string }>(
-    API_ENDPOINTS.WHATSAPP.EMBEDDED_INITIATE
+  const res = await apiClient.post<any>(
+    API_ENDPOINTS.WHATSAPP.EMBEDDED_INITIATE,
+    {}
   );
-  return res.data;
+  const data = res?.data ?? res;
+  return (data?.data ?? data) as { session_id?: string; state: string; [key: string]: any };
 }
 
 export async function callbackEmbeddedSignup(
   payload: EmbeddedSignupCallbackData
 ): Promise<WhatsAppAccount> {
-  const res = await apiClient.post<WhatsAppAccount>(
+  const res = await apiClient.post<any>(
     API_ENDPOINTS.WHATSAPP.EMBEDDED_CALLBACK,
     payload
   );
-  return res.data;
+  const data = res?.data ?? res;
+  return (data?.data ?? data) as WhatsAppAccount;
 }
 
 // ==========================================

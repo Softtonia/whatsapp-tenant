@@ -34,6 +34,7 @@ import {
   useReconnectMetaMutation,
   useInitiateMetaConnectMutation,
 } from "../hooks";
+import { WhatsAppEmbeddedSignup } from "./whatsapp-embedded-signup";
 
 interface ConnectAccountModalProps {
   isOpen: boolean;
@@ -198,7 +199,7 @@ function ConnectAccountInnerForm({
           </TabsTrigger>
         </TabsList>
 
-        {/* Tab 1: Embedded Signup via /api/tenant/meta/connect */}
+        {/* Tab 1: Embedded Signup via /api/whatsapp/embedded-signup Three APIs */}
         <TabsContent value="embedded" className="mt-4 space-y-4">
           <div className="p-4 rounded-xl border border-border bg-card space-y-2.5">
             <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
@@ -208,41 +209,20 @@ function ConnectAccountInnerForm({
             <p className="text-xs text-muted-foreground leading-relaxed">
               Log into your Meta Business Manager to automatically import your verified display name, WhatsApp Business Account, and register phone numbers with zero manual token generation.
             </p>
-            <div className="text-[11px] text-muted-foreground font-mono bg-muted/40 p-2 rounded-lg border border-border/60">
-              Meta App ID: {embeddedConfig?.app_id || "1627020728900812"} • Config: {embeddedConfig?.config_id || "1683696456704799"}
-            </div>
+            {embeddedConfig?.app_id && (
+              <div className="text-[11px] text-muted-foreground font-mono bg-muted/40 p-2 rounded-lg border border-border/60">
+                Meta App ID: {embeddedConfig.app_id} • Config: {embeddedConfig.config_id || "configured"}
+              </div>
+            )}
           </div>
 
-          <Button
-            type="button"
-            onClick={handleLaunchEmbeddedSignup}
-            disabled={metaConnectMutation.isPending}
-            className="w-full h-10 gap-2 font-semibold text-xs shadow-xs bg-[#006E38] hover:bg-[#005a2e] text-white"
-          >
-            {metaConnectMutation.isPending ? (
-              <>
-                <Loader2 className="size-4 animate-spin" />
-                <span>Connecting to Meta...</span>
-              </>
-            ) : (
-              <>
-                <ExternalLink className="size-4" />
-                <span>Continue with Facebook / Meta Login</span>
-              </>
-            )}
-          </Button>
-
-          {authUrl && (
-            <a
-              href={authUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-1.5 w-full h-9 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs"
-            >
-              <ExternalLink className="size-3.5" />
-              <span>Click here if browser blocked the new tab</span>
-            </a>
-          )}
+          <WhatsAppEmbeddedSignup
+            initialConfig={embeddedConfig}
+            buttonLabel="Connect WhatsApp"
+            onSuccess={() => {
+              onSuccess?.();
+            }}
+          />
 
           <p className="text-[11px] text-center text-muted-foreground">
             You must have Admin access to your Meta Business Portfolio.

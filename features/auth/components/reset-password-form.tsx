@@ -77,6 +77,9 @@ function ResetPasswordFormContent() {
   return (
     <Card className="w-full max-w-md shadow-lg border-border/80">
       <CardHeader className="space-y-1 text-center">
+        <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <KeyRound className="size-6" />
+        </div>
         <CardTitle className="text-xl font-bold tracking-tight">Create New Password</CardTitle>
         <CardDescription className="text-xs">
           Set a secure, strong password for your workspace account

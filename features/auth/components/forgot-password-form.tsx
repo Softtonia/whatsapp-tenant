@@ -10,7 +10,7 @@ import { getErrorMessage } from "@/src/lib/api/errors";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Mail, AlertCircle, ArrowLeft, CheckCircle2, Send } from "lucide-react";
+import { Mail, AlertCircle, ArrowLeft, CheckCircle2, Send, KeyRound } from "lucide-react";
 
 export function ForgotPasswordForm() {
   const [serverError, setServerError] = useState<string | null>(null);
@@ -74,6 +74,9 @@ export function ForgotPasswordForm() {
   return (
     <Card className="w-full max-w-md shadow-lg border-border/80">
       <CardHeader className="space-y-1 text-center">
+        <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <KeyRound className="size-6" />
+        </div>
         <CardTitle className="text-xl font-bold tracking-tight">Forgot password?</CardTitle>
         <CardDescription className="text-xs">
           Enter your registered work email and we&apos;ll send you a password reset link.

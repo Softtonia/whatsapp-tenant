@@ -114,8 +114,11 @@ export interface WhatsAppPhoneNumber {
 export interface EmbeddedSignupConfig {
   app_id: string;
   config_id: string;
+  graph_version?: string;
   session_info_version?: string;
+  is_configured?: boolean;
   features?: string[];
+  [key: string]: any;
 }
 
 export type { TeamMember } from "./team";
