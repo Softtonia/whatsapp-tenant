@@ -7,7 +7,7 @@ import {
   useSyncMetaAccountsMutation,
   useReconnectMetaMutation,
   useDisconnectMetaMutation,
-  useInitiateMetaConnectMutation,
+  useMetaEmbeddedSignupFlow,
 } from "@/features/whatsapp-connections/hooks";
 import {
   Sparkles,
@@ -25,7 +25,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ConnectAccountModal } from "@/features/whatsapp-connections/components/connect-account-modal";
 import Link from "next/link";
 
 export function PendingRequirementsBanner() {
@@ -34,9 +33,13 @@ export function PendingRequirementsBanner() {
   const syncMetaMutation = useSyncMetaAccountsMutation();
   const reconnectMetaMutation = useReconnectMetaMutation();
   const disconnectMetaMutation = useDisconnectMetaMutation();
-  const metaConnectMutation = useInitiateMetaConnectMutation();
 
-  const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
+  const { startSignup, isLoading: isConnecting } = useMetaEmbeddedSignupFlow({
+    onSuccess: () => {
+      refetchMeta();
+    },
+  });
+
   const [isExpanded, setIsExpanded] = useState(true);
 
   // Parse requirements response structure
@@ -68,19 +71,10 @@ export function PendingRequirementsBanner() {
     return null;
   }
 
-  const handleConnectMeta = async () => {
-    try {
-      const res = await metaConnectMutation.mutateAsync();
-      const authUrl = res?.auth_url;
-      if (authUrl) {
-        window.open(authUrl, "_blank", "noopener,noreferrer");
-      } else {
-        setIsConnectModalOpen(true);
-      }
-    } catch (err: any) {
-      console.warn("Direct Meta connect failed, opening fallback modal:", err);
-      setIsConnectModalOpen(true);
-    }
+  const handleConnectMeta = () => {
+    startSignup().catch((err) => {
+      console.warn("Meta signup:", err);
+    });
   };
 
   const handleSyncMeta = async () => {
@@ -103,8 +97,7 @@ export function PendingRequirementsBanner() {
   };
 
   return (
-    <>
-      <div className="rounded-xl border border-[#006E38]/30 bg-gradient-to-r from-[#006E38]/10 via-emerald-500/10 to-card p-4 sm:p-5 shadow-xs transition-all">
+    <div className="rounded-xl border border-[#006E38]/30 bg-gradient-to-r from-[#006E38]/10 via-emerald-500/10 to-card p-4 sm:p-5 shadow-xs transition-all">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-start gap-3">
             <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#006E38] text-white shadow-xs mt-0.5">
@@ -142,10 +135,10 @@ export function PendingRequirementsBanner() {
             <Button
               size="sm"
               onClick={handleConnectMeta}
-              disabled={metaConnectMutation.isPending}
+              disabled={isConnecting}
               className="gap-1.5 text-xs font-bold shadow-xs bg-[#006E38] hover:bg-[#005a2e] text-white"
             >
-              {metaConnectMutation.isPending ? (
+              {isConnecting ? (
                 <>
                   <Loader2 className="size-3.5 animate-spin" />
                   <span>Connecting Meta...</span>
@@ -203,10 +196,10 @@ export function PendingRequirementsBanner() {
                   <Button
                     size="xs"
                     onClick={handleConnectMeta}
-                    disabled={metaConnectMutation.isPending}
+                    disabled={isConnecting}
                     className="gap-1 text-[11px] h-7 font-semibold bg-[#006E38] hover:bg-[#005a2e] text-white"
                   >
-                    {metaConnectMutation.isPending ? (
+                    {isConnecting ? (
                       <Loader2 className="size-3 animate-spin" />
                     ) : (
                       <>
@@ -249,15 +242,5 @@ export function PendingRequirementsBanner() {
           </div>
         )}
       </div>
-
-      <ConnectAccountModal
-        isOpen={isConnectModalOpen}
-        onClose={() => setIsConnectModalOpen(false)}
-        onSuccess={() => {
-          refetchMeta();
-          setIsConnectModalOpen(false);
-        }}
-      />
-    </>
   );
 }

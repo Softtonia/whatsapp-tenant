@@ -15,6 +15,7 @@ import {
   fetchEmbeddedSignupConfig,
   initiateEmbeddedSignup,
   callbackEmbeddedSignup,
+  initiateMetaConnect,
 } from "../api";
 import { launchMetaEmbeddedSignup } from "@/src/lib/meta-sdk";
 import type { WhatsAppAccount, EmbeddedSignupConfig } from "@/types/whatsapp";
@@ -59,39 +60,58 @@ export function WhatsAppEmbeddedSignup({
     isSubmittingCallbackRef.current = false;
 
     try {
-      // Step 1: Call API 1 - GET /api/whatsapp/embedded-signup/config
-      const config = initialConfig || (await fetchEmbeddedSignupConfig());
+      // Step 1: Call backend APIs dynamically in parallel (zero hardcoding)
+      const [configRes, initData, metaRes] = await Promise.all([
+        initialConfig ? Promise.resolve(initialConfig) : fetchEmbeddedSignupConfig().catch(() => null),
+        initiateEmbeddedSignup().catch(() => null),
+        initiateMetaConnect().catch(() => null),
+      ]);
 
-      if (!config?.app_id || !config?.config_id) {
+      const appId = configRes?.app_id || metaRes?.app_id || (metaRes as any)?.client_id;
+      const configId = configRes?.config_id || metaRes?.config_id;
+      const graphVersion = configRes?.graph_version || metaRes?.graph_version || "v23.0";
+      const sessionInfoVersion = configRes?.session_info_version || "2";
+      const stateToken = initData?.state || metaRes?.state;
+      const fallbackAuthUrl = metaRes?.auth_url || (metaRes as any)?.data?.auth_url;
+
+      if (!appId || !configId || !stateToken) {
+        if (fallbackAuthUrl && typeof window !== "undefined") {
+          window.open(fallbackAuthUrl, "_blank", "noopener,noreferrer");
+          setStatus("idle");
+          return;
+        }
         throw new Error(
-          "Meta Embedded Signup is not fully configured on the server (missing app_id or config_id)."
+          "Meta Embedded Signup is not fully configured on the server (missing app_id, config_id, or state token)."
         );
       }
 
-      // Step 2: Call API 2 - POST /api/whatsapp/embedded-signup/initiate
-      const initData = await initiateEmbeddedSignup();
-      const stateToken = initData?.state;
-
-      if (!stateToken) {
-        throw new Error(
-          "Did not receive OAuth security state token from backend initiation endpoint."
-        );
-      }
-
-      // Step 3: Launch Meta Embedded Signup via Meta JS SDK
+      // Step 2: Launch Meta Embedded Signup via Meta JS SDK
       setStatus("connecting");
 
-      const signupResult = await launchMetaEmbeddedSignup({
-        appId: config.app_id,
-        configId: config.config_id,
-        graphVersion: config.graph_version || "v21.0",
-        sessionInfoVersion: config.session_info_version || "2",
-        state: stateToken,
-      });
+      let signupResult: any;
+      try {
+        signupResult = await launchMetaEmbeddedSignup({
+          appId,
+          configId,
+          graphVersion,
+          sessionInfoVersion,
+          state: stateToken,
+        });
+      } catch (sdkErr: any) {
+        if (sdkErr?.isCancelled) {
+          setStatus("cancelled");
+          return;
+        }
+        if (fallbackAuthUrl && typeof window !== "undefined") {
+          window.open(fallbackAuthUrl, "_blank", "noopener,noreferrer");
+          setStatus("idle");
+          return;
+        }
+        throw sdkErr;
+      }
 
-      // Step 4: Call API 3 - POST /api/whatsapp/embedded-signup/callback
+      // Step 3: Call API 3 - POST /api/whatsapp/embedded-signup/callback
       if (isSubmittingCallbackRef.current) {
-        // Prevent duplicate callback submission
         return;
       }
       isSubmittingCallbackRef.current = true;

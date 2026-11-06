@@ -1,3 +1,4 @@
+import * as React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   fetchWhatsAppAccounts,
@@ -29,6 +30,7 @@ import {
   reconnectMetaAccount,
   disconnectMetaAccount,
 } from "./api";
+import { launchMetaEmbeddedSignup } from "@/src/lib/meta-sdk";
 import { useActiveTenant } from "@/lib/tenant/hooks";
 import type { DirectConnectFormData, EmbeddedSignupCallbackData } from "./schemas";
 import type { WhatsAppAccount } from "@/types/whatsapp";
@@ -335,13 +337,114 @@ export function useEmbeddedCallbackMutation() {
 export function useInitiateMetaConnectMutation() {
   return useMutation({
     mutationFn: (payload?: Record<string, any> | void) => initiateMetaConnect(payload || {}),
-    onSuccess: (data) => {
-      const authUrl = data?.auth_url;
-      if (authUrl && typeof window !== "undefined") {
-        window.open(authUrl, "_blank", "noopener,noreferrer");
-      }
-    },
   });
+}
+
+/**
+ * Universal hook for Meta WhatsApp Embedded Signup.
+ * Dynamically hits the backend APIs to retrieve configuration and state (zero hardcoding),
+ * launches the Meta JavaScript SDK (FB.login) to automatically open the Facebook dialog,
+ * and exchanges the code with the Laravel callback endpoint.
+ */
+export function useMetaEmbeddedSignupFlow({
+  onSuccess,
+}: {
+  onSuccess?: (account?: WhatsAppAccount) => void;
+} = {}) {
+  const queryClient = useQueryClient();
+  const { activeTenant } = useActiveTenant();
+  const tenantId = activeTenant?.id;
+
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const startSignup = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // 1. Fetch dynamic config and initiate sessions from backend APIs (zero hardcoding)
+      const [configRes, initRes, metaRes] = await Promise.allSettled([
+        fetchEmbeddedSignupConfig(),
+        initiateEmbeddedSignup(),
+        initiateMetaConnect(),
+      ]);
+
+      const config = configRes.status === "fulfilled" ? configRes.value : null;
+      const initData = initRes.status === "fulfilled" ? initRes.value : null;
+      const metaData = metaRes.status === "fulfilled" ? metaRes.value : null;
+
+      const appId = config?.app_id || metaData?.app_id || (metaData as any)?.client_id;
+      const configId = config?.config_id || metaData?.config_id;
+      const graphVersion = config?.graph_version || metaData?.graph_version || "v23.0";
+      const sessionInfoVersion = config?.session_info_version || "2";
+      const stateToken = initData?.state || metaData?.state;
+      const authUrl = metaData?.auth_url || (metaData as any)?.data?.auth_url;
+
+      if (!appId || !configId || !stateToken) {
+        if (authUrl && typeof window !== "undefined") {
+          setIsLoading(false);
+          window.open(authUrl, "_blank", "noopener,noreferrer");
+          return;
+        }
+        throw new Error("Meta Embedded Signup configuration was not returned by server.");
+      }
+
+      // 2. Launch Meta Embedded Signup automatically via Meta JS SDK
+      try {
+        const result = await launchMetaEmbeddedSignup({
+          appId,
+          configId,
+          graphVersion,
+          sessionInfoVersion,
+          state: stateToken,
+        });
+
+        // 3. Complete callback via API 3
+        const savedAccount = await callbackEmbeddedSignup({
+          code: result.code,
+          state: result.state,
+          waba_id: result.waba_id,
+          phone_number_id: result.phone_number_id,
+          set_as_default: true,
+        });
+
+        queryClient.invalidateQueries({
+          queryKey: whatsappConnectionKeys.accounts(tenantId),
+        });
+        queryClient.invalidateQueries({
+          queryKey: whatsappConnectionKeys.metaStatus(tenantId),
+        });
+
+        setIsLoading(false);
+        onSuccess?.(savedAccount);
+        return savedAccount;
+      } catch (sdkErr: any) {
+        if (sdkErr?.isCancelled) {
+          setIsLoading(false);
+          return;
+        }
+        // If Meta SDK encounters an ad-blocker or script block, fallback to auth_url
+        if (authUrl && typeof window !== "undefined") {
+          setIsLoading(false);
+          window.open(authUrl, "_blank", "noopener,noreferrer");
+          return;
+        }
+        throw sdkErr;
+      }
+    } catch (err: any) {
+      setIsLoading(false);
+      const msg = err instanceof Error ? err.message : "Meta signup failed";
+      setError(msg);
+      throw err;
+    }
+  };
+
+  return {
+    startSignup,
+    isLoading,
+    error,
+  };
 }
 
 export function useMetaConnectionStatusQuery() {
