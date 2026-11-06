@@ -138,7 +138,7 @@ export function SubscriptionSection() {
             contact: user?.phone || orderData.prefill?.contact || "",
           },
           theme: {
-            color: "#2563EB",
+            color: "#006E38",
           },
           handler: async function (response: any) {
             // Step 4 — Verify payment signature (POST /api/subscription/verify-payment)

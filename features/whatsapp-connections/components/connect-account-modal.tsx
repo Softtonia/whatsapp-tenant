@@ -217,7 +217,7 @@ function ConnectAccountInnerForm({
             type="button"
             onClick={handleLaunchEmbeddedSignup}
             disabled={metaConnectMutation.isPending}
-            className="w-full h-10 gap-2 font-semibold text-xs shadow-xs bg-blue-600 hover:bg-blue-700 text-white"
+            className="w-full h-10 gap-2 font-semibold text-xs shadow-xs bg-[#006E38] hover:bg-[#005a2e] text-white"
           >
             {metaConnectMutation.isPending ? (
               <>

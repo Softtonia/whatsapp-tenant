@@ -104,10 +104,10 @@ export function PendingRequirementsBanner() {
 
   return (
     <>
-      <div className="rounded-xl border border-blue-500/30 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-card p-4 sm:p-5 shadow-xs transition-all">
+      <div className="rounded-xl border border-[#006E38]/30 bg-gradient-to-r from-[#006E38]/10 via-emerald-500/10 to-card p-4 sm:p-5 shadow-xs transition-all">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-start gap-3">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-xs mt-0.5">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#006E38] text-white shadow-xs mt-0.5">
               <Sparkles className="size-5" />
             </div>
 
@@ -118,7 +118,7 @@ export function PendingRequirementsBanner() {
                 </h3>
                 <Badge
                   variant="outline"
-                  className="bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30 text-[10px] font-bold py-0.5"
+                  className="bg-[#006E38]/15 text-[#006E38] dark:text-emerald-300 border-[#006E38]/30 text-[10px] font-bold py-0.5"
                 >
                   {summary.completion_percentage || 75}% Complete
                 </Badge>
@@ -143,7 +143,7 @@ export function PendingRequirementsBanner() {
               size="sm"
               onClick={handleConnectMeta}
               disabled={metaConnectMutation.isPending}
-              className="gap-1.5 text-xs font-bold shadow-xs bg-blue-600 hover:bg-blue-700 text-white"
+              className="gap-1.5 text-xs font-bold shadow-xs bg-[#006E38] hover:bg-[#005a2e] text-white"
             >
               {metaConnectMutation.isPending ? (
                 <>
@@ -204,7 +204,7 @@ export function PendingRequirementsBanner() {
                     size="xs"
                     onClick={handleConnectMeta}
                     disabled={metaConnectMutation.isPending}
-                    className="gap-1 text-[11px] h-7 font-semibold bg-blue-600 hover:bg-blue-700 text-white"
+                    className="gap-1 text-[11px] h-7 font-semibold bg-[#006E38] hover:bg-[#005a2e] text-white"
                   >
                     {metaConnectMutation.isPending ? (
                       <Loader2 className="size-3 animate-spin" />

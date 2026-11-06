@@ -298,7 +298,7 @@ export function WhatsAppAccountsCard({
                       className="gap-1 text-[11px] h-7"
                       title="Reconnect via /api/tenant/whatsapp/accounts/{id}/reconnect"
                     >
-                      <RotateCcw className="size-3 text-blue-600" />
+                      <RotateCcw className="size-3 text-[#006E38]" />
                       Reconnect
                     </Button>
 
